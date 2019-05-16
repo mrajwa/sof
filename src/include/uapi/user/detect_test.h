@@ -41,7 +41,7 @@ struct sof_detect_test_config {
 	/** synthetic system load settings */
 	uint32_t load_mips;
 	uint32_t load_memory_size;
-
+	uint32_t history_depth;
 	/** length of the keyphrase in milliseconds */
 	uint32_t keyphrase_length;
 

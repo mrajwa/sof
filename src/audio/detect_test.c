@@ -94,11 +94,10 @@ static void notify_kpb(struct comp_dev *dev)
 	cd->client_data.r_ptr = NULL;
 	cd->client_data.sink = NULL;
 	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
-	cd->client_data.history_end = 0; /**< keyphrase end, 0 is now */
-	cd->client_data.history_begin = cd->detect_preamble;
-	/* time in milliseconds */
-	cd->client_data.history_depth = cd->detect_preamble /
-					(dev->params.rate / 1000);
+	/* history size to be drined in bytes of data */
+	cd->client_data.history_depth = cd->config.history_depth != 0 ?
+					cd->config.history_depth :
+					KPB_MAX_BUFFER_SIZE;
 
 	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
 	cd->event_data.client_data = &cd->client_data;
@@ -115,7 +114,6 @@ static void detect_test_notify(struct comp_dev *dev)
 	notify_host(dev);
 	notify_kpb(dev);
 }
-
 static void default_detect_test(struct comp_dev *dev,
 				struct comp_buffer *source, uint32_t frames)
 {
@@ -124,7 +122,7 @@ static void default_detect_test(struct comp_dev *dev,
 	int16_t *src;
 	int16_t diff;
 	int16_t step;
-	uint32_t count = frames; /**< Assuming single channel */
+	uint32_t count = frames;
 	uint32_t sample;
 
 	/* synthetic load */
@@ -282,11 +280,13 @@ static int test_keyword_params(struct comp_dev *dev)
 					    "error: kp length too long");
 			return -EINVAL;
 		}
-
-		cd->keyphrase_samples = cd->config.keyphrase_length *
-					(dev->params.rate / 1000);
+		cd->keyphrase_samples = (cd->config.keyphrase_length *
+					(dev->params.rate / 1000)) /
+					KPB_NR_OF_CHANNELS;
 	} else {
-		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
+		cd->keyphrase_samples = (KPB_MAX_BUFF_TIME *
+					(dev->params.rate / 1000)) /
+					KPB_NR_OF_CHANNELS;
 	}
 
 	return 0;
