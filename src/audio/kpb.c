@@ -65,6 +65,9 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 			     size_t sample_width);
 static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 			      size_t size, size_t sample_width);
+static inline bool is_period_size_valid(size_t period_interval,
+					size_t host_buffer_size,
+					size_t bytes_per_ms);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -717,14 +720,18 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	struct hb *first_buff = buff;
 	size_t buffered = 0;
 	size_t local_buffered = 0;
-	size_t period_interval = 0;
 	size_t period_size = kpb->period_size;
 	size_t host_buffer_size = kpb->host_buffer_size;
 	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+	size_t bytes_per_ms = KPB_SAMPLING_WIDTH * (KPB_SAMPLE_CONTAINER_SIZE(sample_width)/8) *
+			      kpb->config.no_channels;
+	size_t period_interval = (period_size / bytes_per_ms) * ticks_per_ms;
 	trace_kpb("RAJWA: init draining, history_depth %d", history_depth);
-	trace_kpb("kpb_init_draining() host buff size: %d period size %d, ticks_per_ms %d",host_buffer_size, period_size, ticks_per_ms);
+	trace_kpb("kpb_init_draining() host buff size: %d period size %d, ticks_per_ms %d",
+		  host_buffer_size, period_size, ticks_per_ms);
 	trace_kpb("RAJWA: current w_ptr %p buffered %d ",
 			(uint32_t)kpb->history_buffer->w_ptr, kpb->buffered_data);
+
 	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"wrong client id");
@@ -735,6 +742,11 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	} else if (!kpb_has_enough_history_data(kpb, buff, history_depth)) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"not enough data in history buffer");
+	} else if (!is_period_size_valid(period_interval, host_buffer_size,
+					 bytes_per_ms))
+	{
+		trace_kpb_error("kpb_init_draining() error: "
+				"Period size is not valid.");
 	} else {
 		/* Draining accepted, find proper buffer to start reading
 		 * At this point we are guaranteed that there is enough data
@@ -795,15 +807,12 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		 * take place. This time will be used to synchronize us with
 		 * an end application interrupts.
 		 */
-		period_interval = ((host_buffer_size/2)/period_size)*
-		                    ticks_per_ms+(ticks_per_ms*5);
 
-                period_interval = (period_size/64)*ticks_per_ms;
 		kpb->draining_task_data.period_interval = period_interval;
 		kpb->draining_task_data.period_bytes_limit = host_buffer_size/2;
 
-		trace_kpb_error("kpb_init_draining(), period_limit: %d [bytes] and interval %d [uS] %d ticks ",
-			   host_buffer_size/2, ((period_interval * 1000) / ticks_per_ms), period_interval);
+		trace_kpb_error("kpb_init_draining(), period_limit: %d [bytes] and interval %d [ms] %d ticks ",
+			   host_buffer_size/2, period_interval / ticks_per_ms, period_interval);
 
 		/* Add one-time draining task into the scheduler. */
 		kpb->draining_task_data.sink = kpb->host_sink;
@@ -1183,6 +1192,23 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 			j++;
 		}
 	}
+}
+
+static inline bool is_period_size_valid(size_t period_interval,
+					size_t host_buffer_size,
+					size_t bytes_per_ms)
+{
+	/* The formula is like this:
+	 * number_of_ms_copied_every_interval - interval_time > period_time * (interval_time/period_time)
+	 * this simplifies to:
+	 * number_of_ms_copied_every_interval  > 2*interval_time
+	 * interval_time < number_of_ms_copied_every_interval / 2
+	 */
+	size_t ms_drained_per_interval = (host_buffer_size/2)/bytes_per_ms;
+	if (period_interval >= ms_drained_per_interval)
+		trace_kpb_error("RAJWA: period_size is too big!");
+	/*TODO: for testing purposes accept any period size */
+	return true;
 }
 
 struct comp_driver comp_kpb = {
