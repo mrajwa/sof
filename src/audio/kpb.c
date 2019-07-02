@@ -742,7 +742,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	} else if (!kpb_has_enough_history_data(kpb, buff, history_depth)) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"not enough data in history buffer");
-	} else if (!is_period_size_valid(period_interval, host_buffer_size,
+	} else if (!is_period_size_valid(period_interval/ticks_per_ms, host_buffer_size,
 					 bytes_per_ms))
 	{
 		trace_kpb_error("kpb_init_draining() error: "
@@ -1206,7 +1206,7 @@ static inline bool is_period_size_valid(size_t period_interval,
 	 */
 	bool ret = true;
 	size_t ms_drained_per_interval = (host_buffer_size/2)/bytes_per_ms;
-	if (period_interval >= ms_drained_per_interval) {
+	if (period_interval >= ms_drained_per_interval/2) {
 		trace_kpb_error("RAJWA: period_size is too big!");
 		ret = false;
 	}
