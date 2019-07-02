@@ -1204,11 +1204,14 @@ static inline bool is_period_size_valid(size_t period_interval,
 	 * number_of_ms_copied_every_interval  > 2*interval_time
 	 * interval_time < number_of_ms_copied_every_interval / 2
 	 */
+	bool ret = true;
 	size_t ms_drained_per_interval = (host_buffer_size/2)/bytes_per_ms;
-	if (period_interval >= ms_drained_per_interval)
+	if (period_interval >= ms_drained_per_interval) {
 		trace_kpb_error("RAJWA: period_size is too big!");
+		ret = false;
+	}
 	/*TODO: for testing purposes accept any period size */
-	return true;
+	return ret;
 }
 
 struct comp_driver comp_kpb = {
