@@ -798,7 +798,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		period_interval = ((host_buffer_size/2)/period_size)*
 		                    ticks_per_ms+(ticks_per_ms*5);
 
-
+                period_interval = (period_size/64)*ticks_per_ms;
 		kpb->draining_task_data.period_interval = period_interval;
 		kpb->draining_task_data.period_bytes_limit = host_buffer_size/2;
 
@@ -902,6 +902,7 @@ static uint64_t kpb_draining_task(void *arg)
 				PLATFORM_HOST_DMA_TIMEOUT / 1000;
 			}
 		}
+		attempts = 0;
 
 
 		size_to_read = (uint32_t)buff->end_addr -
@@ -975,6 +976,7 @@ static uint64_t kpb_draining_task(void *arg)
 				PLATFORM_HOST_DMA_TIMEOUT / 1000;
 			}
 		}
+		attempts = 0;
 		}
 	}
 
