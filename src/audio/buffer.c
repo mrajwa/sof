@@ -204,7 +204,6 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	spin_lock_irq(&buffer->lock, flags);
 
 	buffer->r_ptr += bytes;
-	buffer->last_r_ptr = buffer->r_ptr;
 
 	/* check for pointer wrap */
 	if (buffer->r_ptr >= buffer->end_addr)
@@ -230,6 +229,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		buffer->cb(buffer->cb_data, &bytes);
 
 	buffer->transfer_done = true;
+	buffer->last_r_ptr = buffer->r_ptr;
 
 	spin_unlock_irq(&buffer->lock, flags);
 
