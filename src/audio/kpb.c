@@ -872,6 +872,7 @@ static uint64_t kpb_draining_task(void *arg)
 	size_t period_bytes_limit = draining_data->period_bytes_limit;
 	uint64_t deadline;
 	uint32_t attempts = 0;
+	uint32_t attempts_total = 0;
 	size_t *buffered_while_draining = &draining_data->buffered_while_draining;
 
 	trace_kpb("kpb_draining_task(), start buff %p, end buff %p",
@@ -883,6 +884,7 @@ static uint64_t kpb_draining_task(void *arg)
 	sink->id = 99;
 	while (history_depth > 0) {
 		if (next_copy_time > platform_timer_get(platform_timer)) {
+			trace_kpb("RAJWA: waiting for next copy interval");
 			period_bytes = 0;
 			continue;
 		}
@@ -895,11 +897,16 @@ static uint64_t kpb_draining_task(void *arg)
 				sink->last_produce, sink->last_consume);
 			if (deadline < platform_timer_get(platform_timer)) {
 				attempts++;
+				attempts_total++;
 				if (attempts > 3) {
 					trace_kpb_error("We failed to retransmit for 3 times, now skip it.");
 					attempts = 0;
 					comp_update_buffer_consume(sink, sink->last_produce);
 					break;
+				}
+				if (attempts_total > 1000) {
+					trace_kpb_error("RAJWA: DMA is dead");
+					return 0;
 				}
 				trace_kpb_error("RAJWA: attempt to retransmit %d bytes",
 					sink->last_produce-sink->last_consume);
@@ -969,11 +976,16 @@ static uint64_t kpb_draining_task(void *arg)
 				sink->last_produce, sink->last_consume);
 			if (deadline < platform_timer_get(platform_timer)) {
 				attempts++;
+				attempts_total++;
 				if (attempts > 3) {
 					trace_kpb_error("We failed to retransmit for 3 times, now skip it.");
 					attempts = 0;
 					comp_update_buffer_consume(sink, sink->last_produce);
 					break;
+				}
+				if (attempts_total > 1000) {
+					trace_kpb_error("RAJWA: DMA is dead");
+					return 0;
 				}
 				trace_kpb_error("RAJWA: attempt to retransmit %d bytes",
 					sink->last_produce-sink->last_consume);
@@ -1207,7 +1219,7 @@ static inline bool is_period_size_valid(size_t period_interval,
 	bool ret = true;
 	size_t ms_drained_per_interval = (host_buffer_size/2)/bytes_per_ms;
 	if (period_interval >= ms_drained_per_interval/2) {
-		trace_kpb_error("RAJWA: period_size is too big!");
+		trace_kpb_error("RAJWA: period_size is too big! period interval %d ms",period_interval);
 		ret = false;
 	}
 	/*TODO: for testing purposes accept any period size */
