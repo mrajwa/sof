@@ -964,6 +964,14 @@ static uint64_t kpb_draining_task(void *arg)
 		}
 
 		if (history_depth == 0) {
+			deadline = platform_timer_get(platform_timer) +
+			clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * 22;
+			while(!*buffered_while_draining){
+				if (deadline < platform_timer_get(platform_timer)){
+					break;
+				}
+				continue;
+			}
 		trace_kpb("RAJWA: update history_depth by %d",*buffered_while_draining );
 		history_depth += *buffered_while_draining;
 		*buffered_while_draining = 0;
@@ -1010,11 +1018,11 @@ static uint64_t kpb_draining_task(void *arg)
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
 
-	trace_kpb("RAJWA: kpb_draining_task(), done. %u drained in %d ms, r_ptr %p",
+	trace_kpb("RAJWA: kpb_draining_task(), done. %u drained in %d ms, failed trans %d",
 		   drained,
 		   (time_end - time_start)
 		   / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1),
-		   (uint32_t)buff->r_ptr);
+		   attempts_total);
 
 	/* Enable system agent back */
 	sa_enable();
