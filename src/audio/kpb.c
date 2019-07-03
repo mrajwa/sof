@@ -884,7 +884,7 @@ static uint64_t kpb_draining_task(void *arg)
 	sink->id = 99;
 	while (history_depth > 0) {
 		if (next_copy_time > platform_timer_get(platform_timer)) {
-			trace_kpb("RAJWA: waiting for next copy interval");
+			//trace_kpb("RAJWA: waiting for next copy interval");
 			period_bytes = 0;
 			continue;
 		}
@@ -893,13 +893,13 @@ static uint64_t kpb_draining_task(void *arg)
 		PLATFORM_HOST_DMA_TIMEOUT / 1000;
 
 		while (sink->free && (sink->last_produce != sink->last_consume)) {
-			trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
-				sink->last_produce, sink->last_consume);
 			if (deadline < platform_timer_get(platform_timer)) {
+				trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
+				sink->last_produce, sink->last_consume);
 				attempts++;
 				attempts_total++;
-				if (attempts > 3) {
-					trace_kpb_error("We failed to retransmit for 3 times, now skip it.");
+				if (attempts > 10) {
+					trace_kpb_error("We failed to retransmit for 10 times, now skip it.");
 					attempts = 0;
 					comp_update_buffer_consume(sink, sink->last_produce);
 					break;
@@ -972,13 +972,13 @@ static uint64_t kpb_draining_task(void *arg)
 		PLATFORM_HOST_DMA_TIMEOUT / 1000;
 
 		while (sink->free && (sink->last_produce != sink->last_consume)) {
-			trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
-				sink->last_produce, sink->last_consume);
 			if (deadline < platform_timer_get(platform_timer)) {
+				trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
+				sink->last_produce, sink->last_consume);
 				attempts++;
 				attempts_total++;
-				if (attempts > 3) {
-					trace_kpb_error("We failed to retransmit for 3 times, now skip it.");
+				if (attempts > 10) {
+					trace_kpb_error("We failed to retransmit for 10 times, now skip it.");
 					attempts = 0;
 					comp_update_buffer_consume(sink, sink->last_produce);
 					break;
