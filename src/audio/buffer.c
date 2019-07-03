@@ -222,7 +222,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	buffer->free = buffer->size - buffer->avail;
 
 	if (buffer->sink->is_dma_connected &&
-	    !buffer->source->is_dma_connected)
+	    !buffer->source->is_dma_connected && !(bytes != buffer->last_produce))
 		dcache_writeback_region(buffer->r_ptr, bytes);
 
 	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_CONSUME)
