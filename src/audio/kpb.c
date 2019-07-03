@@ -870,17 +870,17 @@ static uint64_t kpb_draining_task(void *arg)
 	uint64_t current_time = 0;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->period_bytes_limit;
-	uint64_t deadline;
 	uint32_t attempts = 0;
 	uint32_t attempts_total = 0;
 	size_t *buffered_while_draining = &draining_data->buffered_while_draining;
-
+	size_t deadline;
 	trace_kpb("kpb_draining_task(), start buff %p, end buff %p",
 		(uint32_t)buff->start_addr, (uint32_t)buff->end_addr);
 
 	time_start = platform_timer_get(platform_timer);
 	sink->last_consume = 0;
 	sink->last_produce = 0;
+	sink->transfer_done = true;
 	sink->id = 99;
 	while (history_depth > 0) {
 		if (next_copy_time > platform_timer_get(platform_timer)) {
@@ -888,34 +888,32 @@ static uint64_t kpb_draining_task(void *arg)
 			period_bytes = 0;
 			continue;
 		}
-		deadline = platform_timer_get(platform_timer) +
-		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-		PLATFORM_HOST_DMA_TIMEOUT / 1000;
+		while (!sink->transfer_done){
+			continue;
+		}
 
 		while (sink->last_produce != sink->last_consume) {
-			if (deadline < platform_timer_get(platform_timer)) {
-				trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
-				sink->last_produce, sink->last_consume);
-				attempts++;
-				attempts_total++;
-				if (attempts > 10) {
-					trace_kpb_error("We failed to retransmit for 10 times, now skip it.");
-					attempts = 0;
-					comp_update_buffer_consume(sink, sink->last_produce);
-					break;
-				}
-				if (attempts_total > 1000) {
-					trace_kpb_error("RAJWA: DMA is dead");
-					return 0;
-				}
-				trace_kpb_error("RAJWA: attempt to retransmit %d bytes",
-					sink->last_produce-sink->last_consume);
-				//comp_update_buffer_consume(sink, sink->last_produce);
-				comp_update_buffer_produce(sink, 0xFEED);
-				deadline = platform_timer_get(platform_timer) +
-				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-				PLATFORM_HOST_DMA_TIMEOUT / 1000;
+			while (!sink->transfer_done){
+				continue;
 			}
+			trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
+			sink->last_produce, sink->last_consume);
+			attempts++;
+			attempts_total++;
+			if (attempts > 100) {
+				trace_kpb_error("We failed to retransmit for 10 times, now skip it.");
+				//attempts = 0;
+				comp_update_buffer_consume(sink, sink->last_produce);
+				break;
+			}
+			if (attempts_total > 1000) {
+				trace_kpb_error("RAJWA: DMA is dead");
+				return 0;
+			}
+			trace_kpb_error("RAJWA: attempt to retransmit %d bytes",
+				sink->last_produce-sink->last_consume);
+			//comp_update_buffer_consume(sink, sink->last_produce);
+			comp_update_buffer_produce(sink, 0xFEED);
 		}
 		attempts = 0;
 
@@ -975,34 +973,34 @@ static uint64_t kpb_draining_task(void *arg)
 		trace_kpb("RAJWA: update history_depth by %d",*buffered_while_draining );
 		history_depth += *buffered_while_draining;
 		*buffered_while_draining = 0;
-		deadline = platform_timer_get(platform_timer) +
-		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-		PLATFORM_HOST_DMA_TIMEOUT / 1000;
+
+		while (!sink->transfer_done){
+			continue;
+		}
+
 
 		while (sink->last_produce != sink->last_consume) {
-			if (deadline < platform_timer_get(platform_timer)) {
-				trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
-				sink->last_produce, sink->last_consume);
-				attempts++;
-				attempts_total++;
-				if (attempts > 10) {
-					trace_kpb_error("We failed to retransmit for 10 times, now skip it.");
-					attempts = 0;
-					comp_update_buffer_consume(sink, sink->last_produce);
-					break;
-				}
-				if (attempts_total > 1000) {
-					trace_kpb_error("RAJWA: DMA is dead");
-					return 0;
-				}
-				trace_kpb_error("RAJWA: attempt to retransmit %d bytes",
-					sink->last_produce-sink->last_consume);
-				//comp_update_buffer_consume(sink, sink->last_produce);
-				comp_update_buffer_produce(sink, 0xFEED);
-				deadline = platform_timer_get(platform_timer) +
-				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-				PLATFORM_HOST_DMA_TIMEOUT / 1000;
+			while (!sink->transfer_done){
+				continue;
 			}
+			trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
+			sink->last_produce, sink->last_consume);
+			attempts++;
+			attempts_total++;
+			if (attempts > 100) {
+				trace_kpb_error("We failed to retransmit for 10 times, now skip it.");
+				//attempts = 0;
+				comp_update_buffer_consume(sink, sink->last_produce);
+				break;
+			}
+			if (attempts_total > 1000) {
+				trace_kpb_error("RAJWA: DMA is dead");
+				return 0;
+			}
+			trace_kpb_error("RAJWA: attempt to retransmit %d bytes",
+				sink->last_produce-sink->last_consume);
+			//comp_update_buffer_consume(sink, sink->last_produce);
+			comp_update_buffer_produce(sink, 0xFEED);
 		}
 		attempts = 0;
 		}

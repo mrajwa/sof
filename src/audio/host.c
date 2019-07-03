@@ -148,6 +148,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 
 	/* NO_IRQ mode if no_period_irq == 1 */
 	if (!dev->params.no_period_irq) {
+		trace_host_error("RAJWA: we send IRQ position!!");
 		hd->report_pos += bytes;
 
 		/* send IPC message to driver if needed */
@@ -437,7 +438,7 @@ static int host_elements_reset(struct comp_dev *dev)
 }
 #endif
 
-static void host_buffer_cb(void *data, uint32_t bytes)
+static void host_buffer_cb(void *data, uint32_t *bytes)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -460,8 +461,8 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 		MIN(avail_bytes, hd->dma_buffer->free) :
 		MIN(hd->dma_buffer->avail, free_bytes);
 
-	copy_bytes = MIN(copy_bytes, bytes);
-
+	copy_bytes = MIN(copy_bytes, *bytes);
+	//*bytes = copy_bytes;
 	tracev_host("host_buffer_cb(), copy_bytes = 0x%x", copy_bytes);
 
 	if (hd->copy_blocking)

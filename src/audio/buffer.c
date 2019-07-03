@@ -159,8 +159,9 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 retransmit:
 	buffer->last_produce = bytes;
+	buffer->transfer_done = false;
 	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_PRODUCE)
-		buffer->cb(buffer->cb_data, bytes);
+		buffer->cb(buffer->cb_data, &buffer->last_produce);
 
 	spin_unlock_irq(&buffer->lock, flags);
 
@@ -196,13 +197,14 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		trace_buffer("comp_update_buffer_consume(), "
 			     "no bytes to consume");
 		buffer->last_r_ptr = buffer->r_ptr;
-
+		buffer->transfer_done = true;
 		return;
 	}
 
 	spin_lock_irq(&buffer->lock, flags);
 
 	buffer->r_ptr += bytes;
+	buffer->last_r_ptr = buffer->r_ptr;
 
 	/* check for pointer wrap */
 	if (buffer->r_ptr >= buffer->end_addr)
@@ -225,9 +227,9 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		dcache_writeback_region(buffer->r_ptr, bytes);
 
 	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_CONSUME)
-		buffer->cb(buffer->cb_data, bytes);
+		buffer->cb(buffer->cb_data, &bytes);
 
-	buffer->last_r_ptr = buffer->r_ptr;
+	buffer->transfer_done = true;
 
 	spin_unlock_irq(&buffer->lock, flags);
 

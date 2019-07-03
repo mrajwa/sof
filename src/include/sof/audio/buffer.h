@@ -38,6 +38,7 @@ struct comp_buffer {
 	uint32_t id;
 	uint32_t last_produce;
 	uint32_t last_consume;
+	bool transfer_done;
 	void *last_r_ptr;
 	/* runtime data */
 	uint32_t size;	/* runtime buffer size in bytes (period multiple) */
@@ -61,7 +62,7 @@ struct comp_buffer {
 	struct list_item sink_list;	/* list in comp buffers */
 
 	/* callbacks */
-	void (*cb)(void *data, uint32_t bytes);
+	void (*cb)(void *data, uint32_t *bytes);
 	void *cb_data;
 	int cb_type;
 
