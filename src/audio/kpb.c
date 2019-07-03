@@ -892,7 +892,7 @@ static uint64_t kpb_draining_task(void *arg)
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 		PLATFORM_HOST_DMA_TIMEOUT / 1000;
 
-		while (sink->free && (sink->last_produce != sink->last_consume)) {
+		while (sink->last_produce != sink->last_consume) {
 			if (deadline < platform_timer_get(platform_timer)) {
 				trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
 				sink->last_produce, sink->last_consume);
@@ -979,7 +979,7 @@ static uint64_t kpb_draining_task(void *arg)
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 		PLATFORM_HOST_DMA_TIMEOUT / 1000;
 
-		while (sink->free && (sink->last_produce != sink->last_consume)) {
+		while (sink->last_produce != sink->last_consume) {
 			if (deadline < platform_timer_get(platform_timer)) {
 				trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
 				sink->last_produce, sink->last_consume);
