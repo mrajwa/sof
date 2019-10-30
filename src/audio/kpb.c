@@ -82,7 +82,8 @@ static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 static void kpb_buffer_samples(struct comp_buffer *source, uint32_t start,
 			       void *sink, size_t size, size_t sample_width);
 static void kpb_reset_history_buffer(struct hb *buff);
-static inline bool validate_host_params(size_t host_period_size,
+static inline bool validate_host_params(struct comp_data *kpb,
+					size_t host_period_size,
 					size_t host_buffer_size);
 static inline void kpb_change_state(struct comp_data *kpb,
 				    enum kpb_state state);
@@ -1313,26 +1314,30 @@ static void kpb_reset_history_buffer(struct hb *buff)
 	} while (buff != first_buff);
 }
 
-static inline bool validate_host_params(size_t host_period_size,
+static inline bool validate_host_params(struct comp_data *kpb,
+					size_t host_period_size,
 					size_t host_buffer_size)
 {
-	size_t drained_per_interval;
+	size_t kpb_hb_size = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
 
-	if (host_period_size == 0 || host_buffer_size == 0)
+	if (host_period_size == 0 || host_buffer_size == 0) {
+		/* Wrong host params */
 		return false;
-
-	drained_per_interval = host_buffer_size / 2;
-
-	/* Check host period size sanity.
-	 * Here we check if host period size (which defines interval
-	 * time) will allow us to drain more data then the interval
-	 * takes - as only such condition guarantees draining will end.
-	 * The formula:
-	 *	drained_data_in_one_interval_ms > interval_break_ms
-	 * more
-	 */
-
-	return (drained_per_interval > host_period_size) ? true : false;
+	} else if (host_buffer_size > kpb_hb_size) {
+		/* Host buffer is big enough, we don't have to
+		 * control draining speed.
+		 */
+		return true;
+	} else if (host_buffer_size <= (host_period_size * 2)) {
+		/* XRUN condition - in synchronized draining we copy two
+		 * periods and wait one. Therefore if copied data is equal
+		 * to buffer size whole buffer size XRUN will occur on host
+		 * side.
+		 */
+		return false;
+	} else {
+		return true;
+	}
 }
 
 /**
