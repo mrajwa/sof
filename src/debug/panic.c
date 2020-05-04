@@ -37,6 +37,15 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 	char *ext_offset;
 	size_t count;
 	uintptr_t stack_ptr;
+	int *debug = (void *)0x9e008000;
+	uint32_t prid;
+	static int i;
+
+	*(debug+18) = 0xFEED23;
+
+ 	__asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
+ 	*(debug+19) = prid;
+ 	*(debug+20) = i++;
 
 	/* disable all IRQs */
 	interrupt_global_disable();
@@ -55,6 +64,10 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 	trace_flush();
 #endif
 
+	*(debug+21) = 0xFEED24;
+
+ 	__asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
+ 	*(debug+22) = prid;
 	/* dump stack frames */
 	p = dump_stack(p, ext_offset, stack_rewind_frames, count, &stack_ptr);
 
@@ -67,8 +80,13 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 	platform_panic(p);
 
 	/* and loop forever */
-	while (1)
-		;
+	while (1) {
+		*(debug+23) = 0xFEED25;
+
+ 	__asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
+ 	*(debug+24) = prid;
+
+	}
 }
 
 void __panic(uint32_t p, char *filename, uint32_t linenum)

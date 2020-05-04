@@ -128,6 +128,14 @@ int arch_init(void)
 int slave_core_init(struct sof *sof)
 {
 	int err;
+	int *debug = (void *)0x9e008000;
+	uint32_t prid;
+
+	*(debug+12) = 0xFEED21;
+
+	 __asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
+	 *(debug+13) = prid;
+	 panic(SOF_IPC_PANIC_ARCH);
 
 	/* init architecture */
 	trace_point(TRACE_BOOT_ARCH);
@@ -154,6 +162,8 @@ int slave_core_init(struct sof *sof)
 		return err;
 
 	trace_point(TRACE_BOOT_PLATFORM);
+
+	*(debug+9) = 0xAAAAA;
 
 	/* task initialized in edf_scheduler_init */
 	schedule_task(*task_main_get(), 0, UINT64_MAX);
