@@ -726,7 +726,11 @@ static int kpb_copy(struct comp_dev *dev)
 		if (!copy_bytes) {
 			comp_err(dev, "kpb_copy(): nothing to copy sink->free %d source->avail %d",
 				 sink->stream.free, source->stream.avail);
-			ret = PPL_STATUS_PATH_STOP;
+			/* NOTE! We should stop further pipeline copy due to
+			 * no data availability however due to HW bug
+			 * (no HOST DMA IRQs) we need to call host copy
+			 * anyway so it can update its pointers.
+			 */
 			goto out;
 		}
 
