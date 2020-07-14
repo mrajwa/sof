@@ -154,7 +154,7 @@ dnl     frames, deadline, priority, core)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 1, SSP1-Codec,
 	PIPELINE_SOURCE_1, 2, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # currently this dai is here as "virtual" capture backend
 W_DAI_IN(SSP, 1, SSP1-Codec, s16le, 3, 0)
