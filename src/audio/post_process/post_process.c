@@ -53,7 +53,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 	struct sof_ipc_comp_process *ipc_post_process =
 		(struct sof_ipc_comp_process *)comp;
 	struct comp_data *cd;
-	struct post_process_config *cfg = &cd->pp_config;
+	struct post_process_config *cfg;
 	size_t bs;
 
 	comp_cl_info(&comp_post_process, "post_process_new()");
