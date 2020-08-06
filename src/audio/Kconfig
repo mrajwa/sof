@@ -269,6 +269,17 @@ endmenu # "Downsampling ratios"
 
 endif # COMP_ASRC
 
+config COMP_POST_PROCESS
+	bool "POST_PROCESSING component"
+	default y
+	help
+	  Select for Post Processing component
+	  This components add post processing functionality to the pipeline.
+	  Blaaaaaafedlfgnme;dknfg d'lg;ms'dlgml'dsmg'l;dsmg
+	  dgkljsdl;kghnljkdsbng
+	  dskghlsdjghbjklsdghbjklsdb
+	  dsklgnbsdljghbjldshbgkljdbgljdhsbgkbsdgkl
+
 endmenu # "Audio components"
 
 menu "Data formats"
