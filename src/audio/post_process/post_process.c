@@ -37,7 +37,7 @@
 static const struct comp_driver comp_post_process;
 
 /* d8218443-5ff3-4a4c-b388-6cfe07b9562e */
-DECLARE_SOF_UUID("pp", pp_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
+DECLARE_SOF_RT_UUID("pp", pp_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 		 0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0xAA);
 
 DECLARE_TR_CTX(pp_tr, SOF_UUID(pp_uuid), LOG_LEVEL_INFO);
@@ -606,7 +606,7 @@ static int post_process_cmd(struct comp_dev *dev, int cmd, void *data,
 
 static const struct comp_driver comp_post_process = {
 	.type = SOF_COMP_POST_PROCESS,
-	.uid = SOF_UUID(pp_uuid),
+	.uid = SOF_RT_UUID(pp_uuid),
 	.tctx = &pp_tr,
 	.ops = {
 		.create = post_process_new,
