@@ -89,7 +89,15 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
         }
 
 	/* Load post processing runtime config from the topology. */
-	//TODO: if you return below, free allocated cd and dev!~!!!
+	//TODO: if you return below, free allocated cd and dev!!!!
+	/*
+	Jak przekazac setup config zarówno dla compoentu generycznego PP oraz dla LIB?
+	wydaje sie, ze najmadrzej zrobic to tak, że w topologii tworzymy jednej config ale
+	dodajemy labelki na COMP/LIB i teraz zczytujemy to co dla lib po czym przesoamy tutaj
+	pointer i dalej config speczny dla lib'a. Jest pokusa, zeby zrobic to elegancko i zrobic
+	pewna czesc wspolna ale to utrudni caly proces. Dzieki temu rozwiazniu powyzej mozemy w tym
+	configu dla liba zakodowac rowniez parametr z jakim ma on byc wołany dzieki czemu
+	*/
 	cfg = (struct post_process_config *)ipc_post_process->data;
 	bs = ipc_post_process->size;
 	comp_cl_info(&comp_post_process, "RAJWA: size of config data is %d", bs);
@@ -113,6 +121,8 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 		}
 
 		/* Pass config further to the library */
+		/* move this part to prepare - so in real timne use case it will work like this
+		somebody creates the component and than loads the config as they wish */
 		ret = pp_lib_set_config(dev, cfg);
 		if (ret) {
 			comp_err(dev, "post_process_new(): error %x: failed to set config for lib",
@@ -172,9 +182,10 @@ static int post_process_prepare(struct comp_dev *dev)
 		comp_err(dev, "post_process_prepare() error %x: could not get lib state",
 			 ret);
 		return -EIO;
-        } else if (lib_state >= PP_LIB_PREPARED){
+	} else if (lib_state >= PP_LIB_PREPARED) {
+		comp_info(dev, "post_process_prepare() lib already prepared");
 		goto done;
-        }
+	}
 
 	/* Prepare post processing library */
 	ret = pp_lib_prepare(dev, &cd->sdata);
@@ -562,7 +573,9 @@ static int post_process_ctrl_set_data(struct comp_dev *dev,
                                       struct sof_ipc_ctrl_data *cdata) {
 	int ret;
 
-        comp_dbg(dev, "post_process_ctrl_set_data() start");
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+        comp_info(dev, "post_process_ctrl_set_data() start, state %d", cd->state);
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
