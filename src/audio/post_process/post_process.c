@@ -140,7 +140,8 @@ static int post_process_prepare(struct comp_dev *dev)
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	bool lib_state;
-	comp_dbg(dev, "post_process_prepare() start");
+
+	comp_info(dev, "post_process_prepare() start");
 
 	/* Init sink & source buffers */
 	cd->pp_sink = list_first_item(&dev->bsink_list, struct comp_buffer,
@@ -198,6 +199,7 @@ static int post_process_prepare(struct comp_dev *dev)
                 }
         }
 done:
+	comp_info(dev, "post_process_prepare() done");
         cd->state = PP_STATE_PREPARED;
 
 	return 0;
@@ -590,7 +592,7 @@ static int post_process_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 
-	comp_dbg(dev, "post_process_cmd() %d start", cmd);
+	comp_info(dev, "post_process_cmd() %d start", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
