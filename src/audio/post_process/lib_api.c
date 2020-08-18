@@ -99,7 +99,29 @@ out:
 	return ret;
 }
 
-int pp_lib_set_config(struct comp_dev *dev, void *cfg) {
+int pp_lib_load_setup_config_serialized(struct comp_dev *dev, void *cfg,
+					size_t size)
+{
+	int ret;
+
+	comp_dbg(dev, "pp_set_config() start");
+
+	if (!cfg)
+		comp_err(dev, "pp_set_config() error: NULL config passed!");
+
+	ret = memcpy_s(&pp_lib_data.s_cfg, size, cfg, size);
+
+	assert(!ret);
+
+	ret = validate_config();
+	if (ret) {
+		comp_err(dev, "pp_set_config() error: validation of config failed");
+	}
+
+	return ret;
+}
+
+int pp_lib_load_setup_config(struct comp_dev *dev, void *cfg) {
 	int ret;
 
 	comp_dbg(dev, "pp_set_config() start");
@@ -222,6 +244,44 @@ static inline void *allocate_memtabs_container(size_t size) {
 	return rballoc_align(0, SOF_MEM_CAPS_RAM, size, 4);
 }
 
+
+static int applay_setup_config_serialized(struct comp_dev *dev) {
+	int ret;
+	struct pp_lib_config *cfg = &pp_lib_data.s_cfg;
+	size_t size;
+	struct pp_param *param;
+
+	comp_dbg(dev, "applay_setup_config_serialized() start");
+
+	if (!cfg->avail) {
+		comp_err(dev, "applay_setup_config_serialized() error: no setup config available");
+		ret = -EIO;
+		goto err;
+	}
+
+	size = cfg->size;
+	while (size) {
+		param = cfg->data;
+		comp_dbg(dev, "applay_setup_config_serialized() applying param %d value %d",
+			 param->id, (char)*((char *)param->data));
+		ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
+			      param->id,
+			      &param->data);
+		if (ret != LIB_NO_ERROR) {
+			comp_err(dev, "pp_lib_prepare() error %x: failed to applay parameter %d",
+				 ret, param->id);
+			goto err;
+		}
+		cfg->data = (char *)cfg->data + param->size;
+		size -= param->size;
+	}
+
+	comp_dbg(dev, "applay_setup_config_serialized() done");
+	return 0;
+err:
+	return ret;
+}
+
 int pp_lib_prepare(struct comp_dev *dev,
 		   struct post_process_shared_data *sdata)
 {
@@ -229,61 +289,10 @@ int pp_lib_prepare(struct comp_dev *dev,
 
 	comp_dbg(dev, "pp_lib_prepare() start");
 
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_SAMPLE_RATE,
-			      &pp_lib_data.s_cfg.common.sample_rate);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "pp_lib_prepare() error %x: failed to set sample rate",
+	ret = applay_setup_config_serialized(dev);
+	if (ret)
+		comp_err(dev, "pp_lib_prepare() error %x: failed to applay setup config",
 			 ret);
-		goto err;
-	}
-
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_MAX_NUM_CHANNELS,
-			      &pp_lib_data.s_cfg.common.channels);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "pp_lib_prepare() error %x: failed to set max number of channels",
-			 ret);
-		goto err;
-	}
-
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_NUM_CHANNELS,
-			      &pp_lib_data.s_cfg.common.channels);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "pp_lib_prepare() error %x: failed to set number of channels",
-			ret);
-		goto err;
-	}
-
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_PCM_WDSZ,
-			      &pp_lib_data.s_cfg.common.sample_width);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "pp_lib_prepare() error %x: failed to set sample width");
-		goto err;
-	}
-
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_BLOCK_SIZE,
-			      &pp_lib_data.s_cfg.specific.block_size);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "pp_lib_prepare() error %x: failed to set block size",
-			 ret);
-		goto err;
-	}
-	/* Set interleaved mode ON
-	 * (allows channels to be stored in the same buffer)
-	 * NOTE! This setting applies to both input and output buffers.
-	*/
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_INTERLEAVED_MODE,
-			      &pp_lib_data.s_cfg.specific.interleaved_mode);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "pp_lib_prepare() error %x: failed to set interleaved_mode",
-			 ret);
-		goto err;
-	}
 
 	/* Allocate memory for the codec */
 	ret = PP_LIB_API_CALL(XA_API_CMD_GET_MEMTABS_SIZE,
@@ -406,10 +415,13 @@ int pp_lib_load_runtime_config(struct comp_dev *dev, void *cfg, int size) {
 
 static int apply_general_config(struct comp_dev *dev) {
 	int ret;
-	struct pp_general_config *cfg = &pp_lib_data.r_cfg.general;
+	//TODO: this needs to be fixed
+	struct pp_general_config *cfg = NULL;
+
+	return 0;
 
 	/* Set system gain */
-	comp_dbg(dev, "RAJWA: applying system gain of %d",cfg->system_gain);
+	comp_dbg(dev, "RAJWA: applying system gain of %d", cfg->system_gain);
 
 	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
 			      XA_DAP_VLLDP_CONFIG_PARAM_SYSTEM_GAIN,

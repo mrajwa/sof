@@ -55,6 +55,8 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 	struct comp_data *cd;
 	struct post_process_config *cfg;
 	size_t bs;
+	void *lib_cfg;
+	size_t lib_cfg_size;
 
 	comp_cl_info(&comp_post_process, "post_process_new()");
 
@@ -123,7 +125,10 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 		/* Pass config further to the library */
 		/* move this part to prepare - so in real timne use case it will work like this
 		somebody creates the component and than loads the config as they wish */
-		ret = pp_lib_set_config(dev, cfg);
+		lib_cfg = cfg + sizeof(struct post_process_config);
+		lib_cfg_size = bs - sizeof(struct post_process_config);\
+		comp_cl_info(&comp_post_process, "RAJWA: size of lib_cfg is %d", lib_cfg_size);
+		ret = pp_lib_load_setup_config_serialized(dev, lib_cfg, lib_cfg_size);
 		if (ret) {
 			comp_err(dev, "post_process_new(): error %x: failed to set config for lib",
 				 ret);

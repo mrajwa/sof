@@ -83,17 +83,28 @@ struct post_process_setup_config {
 	struct lib_config specific;
 };
 
+struct  pp_param {
+	uint32_t id;
+	uint32_t size;
+	uint32_t *data;
+};
+
+struct pp_lib_config {
+	size_t size;
+	bool avail;
+	void *data;
+};
 struct post_process_lib_data {
+	void *self;
 	enum pp_lib_state state;
 	char name[LIB_NAME_MAX_LEN];
-	void *self;
 	void *mem_tabs;
 	void *in_buff;
 	void *out_buff;
 	size_t in_buff_size;
 	size_t out_buff_size;
-	struct post_process_setup_config s_cfg;
-	struct post_process_runtime_config r_cfg;
+	struct pp_lib_config s_cfg; /* setup config */
+	struct pp_lib_config r_cfg; /* runtime config */
 };
 
 #endif /* __SOF_AUDIO_PP_LIB_API__ */

@@ -33,7 +33,9 @@ struct post_process_shared_data {
 /*****************************************************************************/
 int pp_get_lib_state(bool *state);
 int pp_init_lib(struct comp_dev *dev);
-int pp_lib_set_config(struct comp_dev *dev, void *cfg);
+int pp_lib_load_setup_config(struct comp_dev *dev, void *cfg);
+int pp_lib_load_setup_config_serialized(struct comp_dev *dev, void *cfg,
+					size_t size);
 int pp_lib_prepare(struct comp_dev *dev,
 		   struct post_process_shared_data *sdata);
 int pp_lib_process_data(struct comp_dev *dev, size_t avail, size_t *produced);
