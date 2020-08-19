@@ -102,7 +102,22 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 	*/
 	cfg = (struct post_process_config *)ipc_post_process->data;
 	bs = ipc_post_process->size;
+
+	//przecieci przez ten config byte after byte co tam siedzi
 	comp_cl_info(&comp_post_process, "RAJWA: size of config data is %d", bs);
+	/*uint32_t *debug = (void *)0x9e008000;
+	int i = 0;
+	uint32_t *ptr = (uint32_t *)cfg;
+	*debug = 0xFEED0;
+	*(debug+i++) = sizeof(uint32_t);
+
+	while (bs > 0) {
+		*(debug+i++) = 0xFEED;
+		*(debug+i++) = *ptr;
+		ptr++;
+		bs -= sizeof(uint32_t);
+	}*/
+
 	if (bs) {
 		if (bs < sizeof(struct post_process_config)) {
 			comp_info(dev, "post_process_new() error: wrong size of post processing config");
@@ -125,9 +140,10 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 		/* Pass config further to the library */
 		/* move this part to prepare - so in real timne use case it will work like this
 		somebody creates the component and than loads the config as they wish */
-		lib_cfg = cfg + sizeof(struct post_process_config);
-		lib_cfg_size = bs - sizeof(struct post_process_config);\
-		comp_cl_info(&comp_post_process, "RAJWA: size of lib_cfg is %d", lib_cfg_size);
+		lib_cfg = (char *)cfg + sizeof(struct post_process_config);
+		lib_cfg_size = bs - sizeof(struct post_process_config);
+		comp_cl_info(&comp_post_process, "RAJWA: size of lib_cfg is %d, first byte %d",
+			      lib_cfg_size, *((char *)lib_cfg));
 		ret = pp_lib_load_setup_config_serialized(dev, lib_cfg, lib_cfg_size);
 		if (ret) {
 			comp_err(dev, "post_process_new(): error %x: failed to set config for lib",

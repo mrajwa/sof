@@ -107,13 +107,17 @@ int pp_lib_load_setup_config_serialized(struct comp_dev *dev, void *cfg,
 
 	comp_dbg(dev, "pp_lib_load_setup_config_serialized() start");
 
-	if (!cfg)
+	if (!cfg) {
 		comp_err(dev, "pp_lib_load_setup_config_serialized() error: NULL config passed!");
+		return -EIO;
+	}
 
 	s_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
-	if (!s_cfg->data)
+	if (!s_cfg->data) {
 		comp_err(dev, "pp_lib_load_setup_config_serialized() error: failed to allocate space for setup config.");
+		return -EIO;
+	}
 
 	ret = memcpy_s(s_cfg->data, size, cfg, size);
 
@@ -258,7 +262,7 @@ static inline void *allocate_memtabs_container(size_t size) {
 static int applay_setup_config_serialized(struct comp_dev *dev) {
 	int ret;
 	struct pp_lib_config *cfg = &pp_lib_data.s_cfg;
-	size_t size;
+	int size;
 	struct pp_param *param;
 	int *debug = (void *)0x9e008000;
 	static int i;
@@ -276,18 +280,16 @@ static int applay_setup_config_serialized(struct comp_dev *dev) {
 
 	size = cfg->size;
 	*(debug+i++) = 0xFEED1;
-	while (size) {
+	while (size > 0) {
 		param = cfg->data;
 		*(debug+i++) = 0xFEED2;
-		comp_dbg(dev, "applay_setup_config_serialized() applying param %d value %d",
-			 param->id, (char)*((char *)param->data));
-		*(debug+i++) = 0xFEED3;
-		*(debug+i++) = 0xABCD;
 		*(debug+i++) = param->id;
-		*(debug+i++) = (char)*((char *)param->data);
+		*(debug+i++) = param->data[0];
+		comp_dbg(dev, "applay_setup_config_serialized() applying param %d value %d",
+			 param->id, param->data[0]);
 		ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
 			      param->id,
-			      &param->data);
+			      param->data);
 		if (ret != LIB_NO_ERROR) {
 			comp_err(dev, "pp_lib_prepare() error %x: failed to applay parameter %d",
 				 ret, param->id);
@@ -298,6 +300,8 @@ static int applay_setup_config_serialized(struct comp_dev *dev) {
 		}
 		cfg->data = (char *)cfg->data + param->size;
 		size -= param->size;
+		*(debug+i++) = size;
+
 	}
 
 	comp_dbg(dev, "applay_setup_config_serialized() done");
