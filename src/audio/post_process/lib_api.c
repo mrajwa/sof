@@ -103,20 +103,30 @@ int pp_lib_load_setup_config_serialized(struct comp_dev *dev, void *cfg,
 					size_t size)
 {
 	int ret;
+	struct pp_lib_config *s_cfg = &pp_lib_data.s_cfg;
 
-	comp_dbg(dev, "pp_set_config() start");
+	comp_dbg(dev, "pp_lib_load_setup_config_serialized() start");
 
 	if (!cfg)
-		comp_err(dev, "pp_set_config() error: NULL config passed!");
+		comp_err(dev, "pp_lib_load_setup_config_serialized() error: NULL config passed!");
 
-	ret = memcpy_s(&pp_lib_data.s_cfg, size, cfg, size);
+	s_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+
+	if (!s_cfg->data)
+		comp_err(dev, "pp_lib_load_setup_config_serialized() error: failed to allocate space for setup config.");
+
+	ret = memcpy_s(s_cfg->data, size, cfg, size);
 
 	assert(!ret);
 
 	ret = validate_config();
 	if (ret) {
-		comp_err(dev, "pp_set_config() error: validation of config failed");
+		comp_err(dev, "pp_set_config() error: validation of config failed!");
 	}
+
+	/* Config loaded, mark it as valid */
+	s_cfg->size = size;
+	s_cfg->avail = true;
 
 	return ret;
 }
@@ -250,26 +260,40 @@ static int applay_setup_config_serialized(struct comp_dev *dev) {
 	struct pp_lib_config *cfg = &pp_lib_data.s_cfg;
 	size_t size;
 	struct pp_param *param;
+	int *debug = (void *)0x9e008000;
+	static int i;
 
 	comp_dbg(dev, "applay_setup_config_serialized() start");
+
+	*(debug+i++) = 0xFEED0;
 
 	if (!cfg->avail) {
 		comp_err(dev, "applay_setup_config_serialized() error: no setup config available");
 		ret = -EIO;
+		*(debug+i++) = ret;
 		goto err;
 	}
 
 	size = cfg->size;
+	*(debug+i++) = 0xFEED1;
 	while (size) {
 		param = cfg->data;
+		*(debug+i++) = 0xFEED2;
 		comp_dbg(dev, "applay_setup_config_serialized() applying param %d value %d",
 			 param->id, (char)*((char *)param->data));
+		*(debug+i++) = 0xFEED3;
+		*(debug+i++) = 0xABCD;
+		*(debug+i++) = param->id;
+		*(debug+i++) = (char)*((char *)param->data);
 		ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
 			      param->id,
 			      &param->data);
 		if (ret != LIB_NO_ERROR) {
 			comp_err(dev, "pp_lib_prepare() error %x: failed to applay parameter %d",
 				 ret, param->id);
+			*(debug+i++) = -1;
+			*(debug+i++) = ret;
+
 			goto err;
 		}
 		cfg->data = (char *)cfg->data + param->size;

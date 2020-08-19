@@ -86,7 +86,7 @@ struct post_process_setup_config {
 struct  pp_param {
 	uint32_t id;
 	uint32_t size;
-	uint32_t *data;
+	void *data;
 };
 
 struct pp_lib_config {
