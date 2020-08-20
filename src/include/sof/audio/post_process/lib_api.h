@@ -92,8 +92,9 @@ struct pp_param {
 struct pp_lib_config {
 	size_t size;
 	bool avail;
-	void *data;
+	void *data; /* tlv config */
 };
+
 struct post_process_lib_data {
 	void *self;
 	enum pp_lib_state state;
@@ -103,8 +104,8 @@ struct post_process_lib_data {
 	void *out_buff;
 	size_t in_buff_size;
 	size_t out_buff_size;
-	struct pp_lib_config s_cfg; /* setup config */
-	struct pp_lib_config r_cfg; /* runtime config */
+	struct pp_lib_config s_cfg;
+	struct pp_lib_config r_cfg;
 };
 
 #endif /* __SOF_AUDIO_PP_LIB_API__ */

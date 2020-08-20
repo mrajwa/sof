@@ -144,7 +144,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 		lib_cfg_size = bs - sizeof(struct post_process_config);
 		comp_cl_info(&comp_post_process, "RAJWA: size of lib_cfg is %d, first byte %d",
 			      lib_cfg_size, *((char *)lib_cfg));
-		ret = pp_lib_load_setup_config_serialized(dev, lib_cfg, lib_cfg_size);
+		ret = pp_lib_load_config(dev, lib_cfg, lib_cfg_size, PP_CFG_SETUP);
 		if (ret) {
 			comp_err(dev, "post_process_new(): error %x: failed to set config for lib",
 				 ret);
@@ -221,7 +221,7 @@ static int post_process_prepare(struct comp_dev *dev)
 
         /* Do we have runtime config available? */
         if (cd->lib_r_cfg_avail) {
-                ret = pp_lib_apply_runtime_config(dev);
+                ret = pp_codec_apply_config(dev, PP_CFG_RUNTIME);
                 if (ret) {
                         comp_err(dev, "post_process_prepare() error %x: lib config apply failed",
                                  ret);
@@ -501,25 +501,24 @@ static int pp_set_runtime_params(struct comp_dev *dev,
 	ret = pp_lib_get_max_blob_size(&lib_max_blob_size);
 	if (ret) {
 		comp_err(dev, "pp_set_runtime_params() error: could not get blob size limit from the lib");
-		goto err;
+		goto end;
 	}
 	if (cdata->num_elems + cdata->elems_remaining > lib_max_blob_size)
 	{
 		comp_err(dev, "pp_set_runtime_params() error: blob size is too big!");
 		ret = -EINVAL;
-		goto err;
+		goto end;
 	}
 
 	if (cdata->msg_index == 0) {
 		/* Allocate buffer for new params */
 		size = cdata->num_elems + cdata->elems_remaining;
 		cd->pp_lib_runtime_config = rballoc(0, SOF_MEM_CAPS_RAM, size);
-		//TODO: free this memory
 
 		if (!cd->pp_lib_runtime_config) {
 			comp_err(dev, "pp_set_runtime_params(): space allocation for new params failed");
 			ret = -EINVAL;
-			goto err;
+			goto end;
 		}
 		memset(cd->pp_lib_runtime_config, 0, size);
 	}
@@ -535,37 +534,36 @@ static int pp_set_runtime_params(struct comp_dev *dev,
 	assert(!ret);
 
 	if (cdata->elems_remaining == 0) {
-		/* New parameters has been copied
-		 * now we can load them to the lib
+		/* Config has been copied now we can load & apply it
+		 * depending on lib status.
 		 */
-		ret = pp_lib_load_runtime_config(dev,
-						 cd->pp_lib_runtime_config,
-						 size);
+		ret = pp_lib_load_config(dev, cd->pp_lib_runtime_config, size,
+					 PP_CFG_RUNTIME);
 		if (ret) {
 			comp_err(dev, "pp_set_runtime_params() error %x: lib params load failed",
 				 ret);
-			goto err;
+			goto end;
         	}
-
 		if (cd->state >= PP_STATE_PREPARED) {
 			/* Post processing is already prepared so we can apply runtime
 			 * config right away.
 			 */
-			ret = pp_lib_apply_runtime_config(dev);
+			ret = pp_codec_apply_config(dev, PP_CFG_RUNTIME);
 			if (ret) {
 				comp_err(dev, "post_process_ctrl_set_data() error %x: lib config apply failed",
 					 ret);
-				goto err;
+				goto end;
 			}
 		} else {
-                	cd->lib_r_cfg_avail = true;
+			cd->lib_r_cfg_avail = true;
 		}
+
+
 	}
 
-	return ret;
-err:
+end:
 	if (cd->pp_lib_runtime_config)
-			rfree(cd->pp_lib_runtime_config);
+		rfree(cd->pp_lib_runtime_config);
 	return ret;
 }
 

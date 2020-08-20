@@ -99,27 +99,29 @@ out:
 	return ret;
 }
 
-int pp_lib_load_setup_config_serialized(struct comp_dev *dev, void *cfg,
-					size_t size)
+int pp_lib_load_config(struct comp_dev *dev, void *cfg, size_t size,
+		       enum pp_cfg_type type)
 {
 	int ret;
-	struct pp_lib_config *s_cfg = &pp_lib_data.s_cfg;
+	struct pp_lib_config *dst;
 
-	comp_dbg(dev, "pp_lib_load_setup_config_serialized() start");
+	comp_dbg(dev, "pp_lib_load_config() start");
+
+	dst = (type == PP_CFG_SETUP) ? &pp_lib_data.s_cfg : &pp_lib_data.r_cfg;
 
 	if (!cfg) {
-		comp_err(dev, "pp_lib_load_setup_config_serialized() error: NULL config passed!");
+		comp_err(dev, "pp_lib_load_config() error: NULL config passed!");
 		return -EIO;
 	}
 
-	s_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+	dst->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
-	if (!s_cfg->data) {
-		comp_err(dev, "pp_lib_load_setup_config_serialized() error: failed to allocate space for setup config.");
+	if (!dst->data) {
+		comp_err(dev, "pp_lib_load_config() error: failed to allocate space for setup config.");
 		return -EIO;
 	}
 
-	ret = memcpy_s(s_cfg->data, size, cfg, size);
+	ret = memcpy_s(dst->data, size, cfg, size);
 
 	assert(!ret);
 
@@ -129,29 +131,8 @@ int pp_lib_load_setup_config_serialized(struct comp_dev *dev, void *cfg,
 	}
 
 	/* Config loaded, mark it as valid */
-	s_cfg->size = size;
-	s_cfg->avail = true;
-
-	return ret;
-}
-
-int pp_lib_load_setup_config(struct comp_dev *dev, void *cfg) {
-	int ret;
-
-	comp_dbg(dev, "pp_set_config() start");
-
-	if (!cfg)
-		comp_err(dev, "pp_set_config() error: NULL config passed!");
-
-	ret = memcpy_s(&pp_lib_data.s_cfg, sizeof(pp_lib_data.s_cfg), cfg,
-		       sizeof(struct post_process_setup_config));
-
-	assert(!ret);
-
-	ret = validate_config();
-	if (ret) {
-		comp_err(dev, "pp_set_config() error: validation of config failed");
-	}
+	dst->size = size;
+	dst->avail = true;
 
 	return ret;
 }
@@ -259,23 +240,26 @@ static inline void *allocate_memtabs_container(size_t size) {
 }
 
 
-static int applay_setup_config_serialized(struct comp_dev *dev) {
+int pp_codec_apply_config(struct comp_dev *dev, enum pp_cfg_type type)
+{
 	int ret;
-	struct pp_lib_config *cfg = &pp_lib_data.s_cfg;
 	int size;
+	struct pp_lib_config *cfg;
 	struct pp_param *param;
 	int *debug = (void *)0x9e008000;
 	static int i;
 
-	comp_dbg(dev, "applay_setup_config_serialized() start");
+	comp_dbg(dev, "pp_codec_apply_config() start");
+
+	cfg = (type == PP_CFG_SETUP) ? &pp_lib_data.s_cfg : &pp_lib_data.r_cfg;
 
 	*(debug+i++) = 0xFEED0;
 
 	if (!cfg->avail) {
-		comp_err(dev, "applay_setup_config_serialized() error: no setup config available");
+		comp_err(dev, "pp_codec_apply_config() error: no setup config available");
 		ret = -EIO;
 		*(debug+i++) = ret;
-		goto err;
+		goto ret;
 	}
 
 	size = cfg->size;
@@ -285,7 +269,7 @@ static int applay_setup_config_serialized(struct comp_dev *dev) {
 		*(debug+i++) = 0xFEED2;
 		*(debug+i++) = param->id;
 		*(debug+i++) = param->data[0];
-		comp_dbg(dev, "applay_setup_config_serialized() applying param %d value %d",
+		comp_dbg(dev, "pp_codec_apply_config() applying param %d value %d",
 			 param->id, param->data[0]);
 		ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
 			      param->id,
@@ -295,18 +279,19 @@ static int applay_setup_config_serialized(struct comp_dev *dev) {
 				 ret, param->id);
 			*(debug+i++) = -1;
 			*(debug+i++) = ret;
-
-			goto err;
+			goto ret;
 		}
 		cfg->data = (char *)cfg->data + param->size;
 		size -= param->size;
 		*(debug+i++) = size;
-
 	}
 
-	comp_dbg(dev, "applay_setup_config_serialized() done");
-	return 0;
-err:
+	comp_dbg(dev, "pp_codec_apply_config() done");
+
+ret:
+	rfree(cfg->data);
+	cfg->size = 0;
+	cfg->avail = false;
 	return ret;
 }
 
@@ -317,10 +302,13 @@ int pp_lib_prepare(struct comp_dev *dev,
 
 	comp_dbg(dev, "pp_lib_prepare() start");
 
-	ret = applay_setup_config_serialized(dev);
-	if (ret)
+	/* Apply lib setup config */
+	ret = pp_codec_apply_config(dev, PP_CFG_SETUP);
+	if (ret) {
 		comp_err(dev, "pp_lib_prepare() error %x: failed to applay setup config",
 			 ret);
+		goto err;
+	}
 
 	/* Allocate memory for the codec */
 	ret = PP_LIB_API_CALL(XA_API_CMD_GET_MEMTABS_SIZE,
@@ -422,129 +410,6 @@ int pp_lib_process_data(struct comp_dev *dev, size_t avail, size_t *produced) {
 
 	return 0;
 err:
-	return ret;
-}
-
-int pp_lib_load_runtime_config(struct comp_dev *dev, void *cfg, int size) {
-	int ret;
-
-	if (!cfg)
-		return -EINVAL;
-	comp_dbg(dev, "RAJWA: loading system config, first bytes %d, whole size %d",
-		*((uint32_t *)cfg), size);
-
-	ret = memcpy_s(&pp_lib_data.r_cfg,
-		       sizeof(struct post_process_runtime_config),
-		       cfg, size);
-	assert(!ret);
-
-	return ret;
-}
-
-static int apply_general_config(struct comp_dev *dev) {
-	int ret;
-	//TODO: this needs to be fixed
-	struct pp_general_config *cfg = NULL;
-
-	return 0;
-
-	/* Set system gain */
-	comp_dbg(dev, "RAJWA: applying system gain of %d", cfg->system_gain);
-
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_SYSTEM_GAIN,
-			      &cfg->system_gain);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "apply_general_config() error %x: failed to set system gain",
-			 ret);
-		goto end;
-	}
-
-	/* Set post gain */
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_POSTGAIN,
-			      &cfg->post_gain);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "apply_general_config() error %x: failed to set post gain",
-			 ret);
-		goto end;
-	}
-
-	/* Set audio optimizer enable */
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_AUDIO_OPTIMIZER_ENABLE,
-			      &cfg->optimizer_enable);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "apply_general_config() error %x: failed to set optimizer enable",
-			 ret);
-		goto end;
-	}
-
-	/* Set speaker distortion mode */
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_REGULATOR_SPEAKER_DISTORTION_ENABLE,
-			      &cfg->speaker_distortion_mode);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "apply_general_config() error %x: failed to set speaker distortion mode",
-			 ret);
-		goto end;
-	}
-
-	/* Set overdrive regulator */
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_REGULATOR_OVERDRIVE,
-			      &cfg->overdrive_regulator);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "apply_general_config() error %x: failed to set overdrive regulator",
-			 ret);
-		goto end;
-	}
-
-	/* Set relaxation */
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_REGULATOR_RELAXATION_AMOUNT,
-			      &cfg->relaxation_amount);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "apply_general_config() error %x: failed to set relaxation amount",
-			 ret);
-		goto end;
-	}
-
-	/* Set timbre regulation */
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_REGULATOR_TIMBRE_PRESERVATION,
-			      &cfg->timbre_regulation);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "apply_general_config() error %x: failed to set timbre regulation",
-			 ret);
-		goto end;
-	}
-
-	/* Set isolated bands */
-	ret = PP_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
-			      XA_DAP_VLLDP_CONFIG_PARAM_REGULATOR_ISOLATED_BANDS,
-			      &cfg->isolated_bands_regulation);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "apply_general_config() error %x: failed to set isolated bands",
-			 ret);
-	}
-
-end:
-	return ret;
-
-}
-
-int pp_lib_apply_runtime_config(struct comp_dev *dev)
-{
-	int ret;
-
-	ret = apply_general_config(dev);
-
-	if (ret) {
-		comp_err(dev, "post_process_apply_runtime_config() error %x: failed to apply general config",
-			 ret);
-	}
-
 	return ret;
 }
 
