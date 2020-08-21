@@ -60,8 +60,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 
 	comp_cl_info(&comp_post_process, "post_process_new()");
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev) {
 		comp_cl_err(&comp_post_process, "post_process_new(), failed to allocate memory for comp_dev");
 		return NULL;
