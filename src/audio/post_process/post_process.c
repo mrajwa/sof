@@ -482,7 +482,7 @@ static int pp_set_config(struct comp_dev *dev,
 static int pp_set_runtime_params(struct comp_dev *dev,
 			      struct sof_ipc_ctrl_data *cdata) {
 	int ret;
-	unsigned char *dst, *src;
+	char *dst, *src;
 	static uint32_t size;
 	uint32_t offset, lib_max_blob_size;
         struct comp_data *cd = comp_get_drvdata(dev);
@@ -523,8 +523,8 @@ static int pp_set_runtime_params(struct comp_dev *dev,
 	}
 
 	offset = size - (cdata->num_elems + cdata->elems_remaining);
-	dst = (unsigned char *)cd->pp_lib_runtime_config + offset;
-	src = (unsigned char *)cdata->data->data;
+	dst = (char *)cd->pp_lib_runtime_config + offset;
+	src = (char *)cdata->data->data;
 
 	ret = memcpy_s(dst,
 		       size - offset,
