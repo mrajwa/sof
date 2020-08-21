@@ -563,6 +563,7 @@ static int pp_set_runtime_params(struct comp_dev *dev,
 end:
 	if (cd->pp_lib_runtime_config)
 		rfree(cd->pp_lib_runtime_config);
+	cd->pp_lib_runtime_config = NULL;
 	return ret;
 }
 
@@ -570,7 +571,11 @@ static int pp_set_binary_data(struct comp_dev *dev,
 			      struct sof_ipc_ctrl_data *cdata) {
 	int ret;
 
+	 comp_info(dev, "pp_set_binary_data() start, data type %d",
+	 	   cdata->data->type);
+
 	switch (cdata->data->type) {
+		/* TODO: use enum pp_cfg_type instead of defines */
 	case PP_SETUP_CONFIG:
 		ret = pp_set_config(dev, cdata);
 		break;
@@ -593,7 +598,8 @@ static int post_process_ctrl_set_data(struct comp_dev *dev,
 
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-        comp_info(dev, "post_process_ctrl_set_data() start, state %d", cd->state);
+        comp_info(dev, "post_process_ctrl_set_data() start, state %d, cmd %d",
+        	  cd->state, cdata->cmd);
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
