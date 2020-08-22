@@ -26,7 +26,7 @@
 #define LIB_NAME_MAX_LEN 30
 
 #define PP_LIB_API_CALL(cmd, sub_cmd, value) \
-	xa_dap_vlldp((pp_lib_data.self), (cmd), (sub_cmd), (value));\
+	pp_lib_data.api((pp_lib_data.self), (cmd), (sub_cmd), (value));\
 	if (ret != LIB_NO_ERROR) \
 		handle_error(dev, ret);
 #define PP_LIB_API_SET_CONFIG(XA_API_CMD_SET_CONFIG_PARAM, idx, pvalue, context_str) \
@@ -48,6 +48,29 @@ enum config_apply_mask {
 	APPLY_TRESH_REG_CONFIG,
 	APPLY_REG_TUN_CONFIG,
 	APPLY_CONFIG_STOP,
+};
+
+struct processing_codec {
+	char id;
+	char *name;
+	char *version;
+	xa_codec_func_t *api;
+};
+
+
+static struct processing_codec pp_codec[] = {
+	{
+		.id = 0,
+		.name = "",
+		.version = "",
+		.api = xa_dap_vlldp
+	},
+	{
+		.id = 1,
+		.name = NULL,
+		.version = NULL,
+		.api = NULL
+	},
 };
 
 /*****************************************************************************/
@@ -97,6 +120,7 @@ struct pp_lib_config {
 
 struct post_process_lib_data {
 	void *self;
+	xa_codec_func_t *api;
 	enum pp_lib_state state;
 	char name[LIB_NAME_MAX_LEN];
 	void *mem_tabs;

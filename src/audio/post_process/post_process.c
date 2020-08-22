@@ -82,13 +82,6 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, cd);
 
-	/* Init post processing lib */
-        ret = pp_init_lib(dev);
-        if (ret) {
-		comp_err(dev, "post_process_new() error %x: lib initialization failed",
-			 ret);
-        }
-
 	/* Load post processing runtime config from the topology. */
 	//TODO: if you return below, free allocated cd and dev!!!!
 	/*
@@ -156,6 +149,13 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 		comp_err(dev, "post_process_new(): no configuration available");
 		return NULL;
 	}
+
+	/* Init post processing lib */
+        ret = pp_init_lib(dev, cd->pp_config.codec_id);
+        if (ret) {
+		comp_err(dev, "post_process_new() error %x: lib initialization failed",
+			 ret);
+        }
 
 	dev->state = COMP_STATE_READY;
         cd->state = PP_STATE_CREATED;

@@ -22,6 +22,8 @@ enum pp_cfg_type {
 };
 
 struct post_process_config {
+	uint32_t codec_id;
+	uint32_t reserved;
 	uint32_t sample_rate;
 	uint32_t sample_width;
 	uint32_t channels;
@@ -37,7 +39,7 @@ struct post_process_shared_data {
 /* Post processing library public interfaces						     */
 /*****************************************************************************/
 int pp_get_lib_state(bool *state);
-int pp_init_lib(struct comp_dev *dev);
+int pp_init_lib(struct comp_dev *dev, uint32_t codec_id);
 int pp_lib_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		       enum pp_cfg_type type);
 int pp_lib_prepare(struct comp_dev *dev,

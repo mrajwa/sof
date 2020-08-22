@@ -56,16 +56,29 @@ static void handle_error(struct comp_dev *dev, int error) {
 	}
 }
 
-int pp_init_lib(struct comp_dev *dev) {
+int pp_init_lib(struct comp_dev *dev, uint32_t codec_id) {
 	int ret;
 	size_t lib_obj_size;
-
+	int *debug = (void *)0x9e008000;
 	comp_dbg(dev, "pp_init_lib() start");
+
+	*debug = 0xFEED0;
+	/* select API */
+	//TODO check if codec_id is not bigger than pp_codec array size
+	*(debug+1) = codec_id;
+	pp_lib_data.api = pp_codec[codec_id].api;
+	*(debug+2) = 0xFEED1;
+	if (!pp_lib_data.api) {
+		comp_err(dev, "pp_init_lib() error %x: failed to assign API function.");
+		ret = -EIO;
+		goto out;
+	}
 
 	ret = PP_LIB_API_CALL(XA_API_CMD_GET_LIB_ID_STRINGS,
 			      XA_CMD_TYPE_LIB_NAME,
 			      pp_lib_data.name);
 
+	*(debug+3) = 0xFEED2;
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "pp_init_lib() error %x: failed to get lib name",
 			 ret);
