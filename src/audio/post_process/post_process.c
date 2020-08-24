@@ -49,10 +49,10 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 					 struct sof_ipc_comp *comp)
 {
 	int ret;
-	struct comp_dev *dev;
+	struct comp_dev *dev = NULL;
+	struct comp_data *cd = NULL;
 	struct sof_ipc_comp_process *ipc_post_process =
 		(struct sof_ipc_comp_process *)comp;
-	struct comp_data *cd;
 	struct post_process_config *cfg;
 	size_t bs;
 	void *lib_cfg;
@@ -63,7 +63,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev) {
 		comp_cl_err(&comp_post_process, "post_process_new(), failed to allocate memory for comp_dev");
-		return NULL;
+		goto err;
 	}
 
 	dev->drv = drv;
@@ -76,8 +76,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		comp_cl_err(&comp_post_process, "post_process_new(), failed to allocate memory for comp_data");
-		rfree(dev);
-		return NULL;
+		goto err;
 	}
 
 	comp_set_drvdata(dev, cd);
@@ -113,7 +112,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 	if (bs) {
 		if (bs < sizeof(struct post_process_config)) {
 			comp_info(dev, "post_process_new() error: wrong size of post processing config");
-			return NULL;
+			goto err;
 		}
 		ret = memcpy_s(&cd->pp_config, sizeof(cd->pp_config), cfg,
 			       sizeof(struct post_process_config));
@@ -126,7 +125,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 		ret = validate_config(&cd->pp_config);
 		if (ret) {
 			comp_err(dev, "post_process_new(): error: validation of pp config failed");
-			return NULL;
+			goto err;
 		}
 
 		/* Pass config further to the library */
@@ -147,7 +146,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 
 	} else {
 		comp_err(dev, "post_process_new(): no configuration available");
-		return NULL;
+		goto err;
 	}
 
 	/* Init post processing lib */
@@ -155,6 +154,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
         if (ret) {
 		comp_err(dev, "post_process_new() error %x: lib initialization failed",
 			 ret);
+		goto err;
         }
 
 	dev->state = COMP_STATE_READY;
@@ -163,6 +163,12 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 	comp_cl_info(&comp_post_process, "post_process_new(): component created successfully");
 
 	return dev;
+err:
+	if (cd)
+		rfree(cd);
+	if (dev)
+		rfree(dev);
+	return NULL;
 }
 
 static int post_process_prepare(struct comp_dev *dev)
