@@ -8,13 +8,13 @@
 #ifndef __SOF_AUDIO_PP_LIB_API__
 #define __SOF_AUDIO_PP_LIB_API__
 
-#include <sof/audio/post_process/pp_common.h>
-#include <sof/audio/post_process/xa_apicmd_standards.h>
-#include <sof/audio/post_process/xa_dap_vlldp_api.h>
-#include <sof/audio/post_process/xa_error_standards.h>
-#include <sof/audio/post_process/xa_memory_standards.h>
-#include <sof/audio/post_process/xa_type_def.h>
-#include <sof/audio/post_process/xa_type_def.h>
+#include <sof/audio/codec_adapter/pp_common.h>
+#include <sof/audio/codec_adapter/xa_apicmd_standards.h>
+#include <sof/audio/codec_adapter/xa_dap_vlldp_api.h>
+#include <sof/audio/codec_adapter/xa_error_standards.h>
+#include <sof/audio/codec_adapter/xa_memory_standards.h>
+#include <sof/audio/codec_adapter/xa_type_def.h>
+#include <sof/audio/codec_adapter/xa_type_def.h>
 
 /*****************************************************************************/
 /* Generic API interface						     */
@@ -88,7 +88,7 @@ struct pp_general_config {
 	uint32_t isolated_bands_regulation[XA_DAP_VLLDP_NUM_BANDS];
 };
 
-struct post_process_runtime_config {
+struct codec_adapter_runtime_config {
 	struct pp_general_config general;
 	xa_dap_vlldp_prefilter_t prefilter;
 	xa_dap_vlldp_optimizer_gains_t optimizer;
@@ -101,8 +101,8 @@ struct lib_config {
 	uint32_t interleaved_mode;
 };
 
-struct post_process_setup_config {
-	struct post_process_config common;
+struct codec_adapter_setup_config {
+	struct codec_adapter_config common;
 	struct lib_config specific;
 };
 
@@ -118,7 +118,7 @@ struct pp_lib_config {
 	void *data; /* tlv config */
 };
 
-struct post_process_lib_data {
+struct codec_adapter_lib_data {
 	void *self;
 	xa_codec_func_t *api;
 	enum pp_lib_state state;

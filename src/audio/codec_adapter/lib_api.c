@@ -5,9 +5,9 @@
  * Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
-#include <sof/audio/post_process/lib_api.h>
+#include <sof/audio/codec_adapter/lib_api.h>
 
-static struct post_process_lib_data pp_lib_data;
+static struct codec_adapter_lib_data pp_lib_data;
 
 static inline void *allocate_lib_obj(size_t obj_size)
 {
@@ -309,7 +309,7 @@ ret:
 }
 
 int pp_lib_prepare(struct comp_dev *dev,
-		   struct post_process_shared_data *sdata)
+		   struct codec_adapter_shared_data *sdata)
 {
 	int ret, mem_tabs_size, lib_init_status;
 

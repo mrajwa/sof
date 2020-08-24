@@ -21,7 +21,7 @@ enum pp_cfg_type {
 	PP_CFG_RUNTIME
 };
 
-struct post_process_config {
+struct codec_adapter_config {
 	uint32_t codec_id;
 	uint32_t reserved;
 	uint32_t sample_rate;
@@ -29,7 +29,7 @@ struct post_process_config {
 	uint32_t channels;
 };
 
-struct post_process_shared_data {
+struct codec_adapter_shared_data {
 	uint32_t lib_in_buff_size;
 	void *lib_in_buff;
 	void *lib_out_buff;
@@ -43,7 +43,7 @@ int pp_init_lib(struct comp_dev *dev, uint32_t codec_id);
 int pp_lib_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		       enum pp_cfg_type type);
 int pp_lib_prepare(struct comp_dev *dev,
-		   struct post_process_shared_data *sdata);
+		   struct codec_adapter_shared_data *sdata);
 int pp_lib_process_data(struct comp_dev *dev, size_t avail, size_t *produced);
 int pp_codec_apply_config(struct comp_dev *dev,enum pp_cfg_type type);
 int pp_lib_get_max_blob_size(uint32_t *size);

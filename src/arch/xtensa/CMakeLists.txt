@@ -223,14 +223,14 @@ target_link_libraries(sof_ld_flags INTERFACE "-Wl,-Map=sof.map")
 target_link_libraries(sof_ld_flags INTERFACE "-T${PROJECT_BINARY_DIR}/${platform_ld_script}")
 
 add_custom_target(
-	prepare_sof_post_process
+	prepare_sof_codec_adapter
 	DEPENDS sof
 	COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/sof sof-${fw_name}
 )
 
 # contains steps that should be performed before fw image is ready for being
 # processed by tools like rimage and MEU
-add_custom_target(sof_post_process DEPENDS prepare_sof_post_process)
+add_custom_target(sof_codec_adapter DEPENDS prepare_sof_codec_adapter)
 
 # contains extra output that should be generated for bin target
 add_custom_target(bin_extras)
@@ -267,12 +267,12 @@ if(build_bootloader)
 		process_base_module
 		COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/base_module mod-${fw_name}.bin
 		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-${fw_name}.bin --set-section-flags .module=load,readonly sof-${fw_name}
-		DEPENDS prepare_sof_post_process base_module bootloader_dump
+		DEPENDS prepare_sof_codec_adapter base_module bootloader_dump
 		VERBATIM
 		USES_TERMINAL
 	)
 
-	add_dependencies(sof_post_process process_base_module)
+	add_dependencies(sof_codec_adapter process_base_module)
 else()
 	set(bootloader_binary_path)
 endif()
@@ -319,7 +319,7 @@ add_custom_target(
 	COMMAND ${CMAKE_OBJDUMP} -S sof-${fw_name} > sof-${fw_name}.lst
 	COMMAND ${CMAKE_OBJDUMP} -h sof-${fw_name} > sof-${fw_name}.lmap
 	COMMAND ${CMAKE_OBJDUMP} -D sof-${fw_name} > sof-${fw_name}.dis
-	DEPENDS sof_post_process
+	DEPENDS sof_codec_adapter
 	VERBATIM
 	USES_TERMINAL
 )
