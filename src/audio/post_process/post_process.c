@@ -34,7 +34,7 @@
 #include <stdint.h>
 #include <user/trace.h>
 
-static const struct comp_driver comp_post_process;
+static const struct comp_driver comp_codec_adapter;
 
 /* d8218443-5ff3-4a4c-b388-6cfe07b9562e */
 DECLARE_SOF_RT_UUID("pp", pp_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
@@ -58,11 +58,11 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 	void *lib_cfg;
 	size_t lib_cfg_size;
 
-	comp_cl_info(&comp_post_process, "post_process_new()");
+	comp_cl_info(&comp_codec_adapter, "post_process_new()");
 
 	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev) {
-		comp_cl_err(&comp_post_process, "post_process_new(), failed to allocate memory for comp_dev");
+		comp_cl_err(&comp_codec_adapter, "post_process_new(), failed to allocate memory for comp_dev");
 		goto err;
 	}
 
@@ -75,7 +75,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
-		comp_cl_err(&comp_post_process, "post_process_new(), failed to allocate memory for comp_data");
+		comp_cl_err(&comp_codec_adapter, "post_process_new(), failed to allocate memory for comp_data");
 		goto err;
 	}
 
@@ -95,7 +95,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 	bs = ipc_post_process->size;
 
 	//przecieci przez ten config byte after byte co tam siedzi
-	comp_cl_info(&comp_post_process, "RAJWA: size of config data is %d", bs);
+	comp_cl_info(&comp_codec_adapter, "RAJWA: size of config data is %d", bs);
 	/*uint32_t *debug = (void *)0x9e008000;
 	int i = 0;
 	uint32_t *ptr = (uint32_t *)cfg;
@@ -117,7 +117,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 		ret = memcpy_s(&cd->pp_config, sizeof(cd->pp_config), cfg,
 			       sizeof(struct post_process_config));
 		assert(!ret);
-		comp_cl_info(&comp_post_process, "RAJWA: sample rate: %d width %d, channels %d",
+		comp_cl_info(&comp_codec_adapter, "RAJWA: sample rate: %d width %d, channels %d",
 			cd->pp_config.sample_rate,
 			cd->pp_config.sample_width,
 			cd->pp_config.channels);
@@ -133,7 +133,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 		somebody creates the component and than loads the config as they wish */
 		lib_cfg = (char *)cfg + sizeof(struct post_process_config);
 		lib_cfg_size = bs - sizeof(struct post_process_config);
-		comp_cl_info(&comp_post_process, "RAJWA: size of lib_cfg is %d, first byte %d",
+		comp_cl_info(&comp_codec_adapter, "RAJWA: size of lib_cfg is %d, first byte %d",
 			      lib_cfg_size, *((char *)lib_cfg));
 		ret = pp_lib_load_config(dev, lib_cfg, lib_cfg_size, PP_CFG_SETUP);
 		if (ret) {
@@ -160,7 +160,7 @@ static struct comp_dev *post_process_new(const struct comp_driver *drv,
 	dev->state = COMP_STATE_READY;
         cd->state = PP_STATE_CREATED;
 
-	comp_cl_info(&comp_post_process, "post_process_new(): component created successfully");
+	comp_cl_info(&comp_codec_adapter, "post_process_new(): component created successfully");
 
 	return dev;
 err:
@@ -246,19 +246,19 @@ static void post_process_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_cl_info(&comp_post_process, "post_process_free(): start");
+	comp_cl_info(&comp_codec_adapter, "post_process_free(): start");
 
 	rfree(cd);
 	rfree(dev);
 	//TODO: call lib API to free its resources
 
-	comp_cl_info(&comp_post_process, "post_process_free(): component memory freed");
+	comp_cl_info(&comp_codec_adapter, "post_process_free(): component memory freed");
 
 }
 
 static int post_process_trigger(struct comp_dev *dev, int cmd)
 {
-	comp_cl_info(&comp_post_process, "post_process_trigger(): component got trigger cmd %x",
+	comp_cl_info(&comp_codec_adapter, "post_process_trigger(): component got trigger cmd %x",
 		     cmd);
 
 	//TODO: ask lib if pp parameters has been aplied and if not log it!
@@ -270,7 +270,7 @@ static int post_process_reset(struct comp_dev *dev)
 {
         struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_cl_info(&comp_post_process, "post_process_reset(): resetting");
+	comp_cl_info(&comp_codec_adapter, "post_process_reset(): resetting");
 
         cd->state = PP_STATE_CREATED;
 
@@ -312,7 +312,7 @@ static int post_process_reset(struct comp_dev *dev)
 // 		break;
 // #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE*/
 // 	    default:
-// 		comp_cl_info(&comp_post_process, "KPB: An attempt to copy "
+// 		comp_cl_info(&comp_codec_adapter, "KPB: An attempt to copy "
 // 			"not supported format!");
 // 		return;
 // 	    }
@@ -351,7 +351,7 @@ static void post_process_copy_to_lib(const struct audio_stream *source,
 				break;
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE*/
 			default:
-				comp_cl_info(&comp_post_process, "post_process_copy_to_lib(): An attempt to copy not supported format!");
+				comp_cl_info(&comp_codec_adapter, "post_process_copy_to_lib(): An attempt to copy not supported format!");
 				return;
 			}
 			j++;
@@ -391,7 +391,7 @@ static void post_process_copy_from_lib_to_sink(void *source, struct audio_stream
 				break;
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 			default:
-				comp_cl_info(&comp_post_process, "post_process_copy_to_lib(): An attempt to copy not supported format!");
+				comp_cl_info(&comp_codec_adapter, "post_process_copy_to_lib(): An attempt to copy not supported format!");
 				return;
 			}
 			j++;
@@ -649,8 +649,8 @@ static int post_process_cmd(struct comp_dev *dev, int cmd, void *data,
 	}
 }
 
-static const struct comp_driver comp_post_process = {
-	.type = SOF_COMP_POST_PROCESS,
+static const struct comp_driver comp_codec_adapter = {
+	.type = SOF_COMP_CODEC_ADAPTER,
 	.uid = SOF_RT_UUID(pp_uuid),
 	.tctx = &pp_tr,
 	.ops = {
@@ -666,14 +666,14 @@ static const struct comp_driver comp_post_process = {
 };
 
 
-static SHARED_DATA struct comp_driver_info comp_post_process_info = {
-	.drv = &comp_post_process,
+static SHARED_DATA struct comp_driver_info comp_codec_adapter_info = {
+	.drv = &comp_codec_adapter,
 };
 
-UT_STATIC void sys_comp_post_process_init(void)
+UT_STATIC void sys_comp_codec_adapter_init(void)
 {
-	comp_register(platform_shared_get(&comp_post_process_info,
-					  sizeof(comp_post_process_info)));
+	comp_register(platform_shared_get(&comp_codec_adapter_info,
+					  sizeof(comp_codec_adapter_info)));
 }
 
-DECLARE_MODULE(sys_comp_post_process_init);
+DECLARE_MODULE(sys_comp_codec_adapter_init);

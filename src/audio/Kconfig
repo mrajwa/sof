@@ -269,7 +269,7 @@ endmenu # "Downsampling ratios"
 
 endif # COMP_ASRC
 
-config COMP_POST_PROCESS
+config COMP_CODEC_ADAPTER
 	bool "POST_PROCESSING component"
 	default y
 	help
