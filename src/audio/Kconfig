@@ -269,8 +269,8 @@ endmenu # "Downsampling ratios"
 
 endif # COMP_ASRC
 
-config COMP_CODEC_ADAPTER
-	bool "codec_adapterING component"
+config COMP_GENERIC_PROCESSOR
+	bool "generic_processorING component"
 	default y
 	help
 	  Select for Post Processing component

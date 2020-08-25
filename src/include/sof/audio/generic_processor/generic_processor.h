@@ -5,7 +5,7 @@
  * Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
-#include <sof/audio/codec_adapter/pp_common.h>
+#include <sof/audio/generic_processor/pp_common.h>
 
 #define PP_SETUP_CONFIG		0
 #define PP_RUNTIME_PARAMS	1
@@ -17,18 +17,18 @@ enum pp_state {
 	PP_STATE_RUN,
 };
 
-/* codec_adapter private, runtime data */
+/* generic_processor private, runtime data */
 struct comp_data {
 	enum pp_state state;
-	struct codec_adapter_config pp_config;
-	struct codec_adapter_shared_data sdata;
+	struct generic_processor_config pp_config;
+	struct generic_processor_shared_data sdata;
 	struct comp_buffer *pp_sink;
 	struct comp_buffer *pp_source;
 	bool lib_r_cfg_avail;
 	void *pp_lib_runtime_config;
 };
 
-static  inline int validate_config(struct codec_adapter_config *cfg)
+static  inline int validate_config(struct generic_processor_config *cfg)
 {
 	//TODO: custom validation of post processing paramters
 	return 0;
