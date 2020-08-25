@@ -135,7 +135,7 @@ static struct comp_dev *generic_processor_new(const struct comp_driver *drv,
 		lib_cfg_size = bs - sizeof(struct generic_processor_config);
 		comp_cl_info(&comp_generic_processor, "RAJWA: size of lib_cfg is %d, first byte %d",
 			      lib_cfg_size, *((char *)lib_cfg));
-		ret = gp_lib_load_config(dev, lib_cfg, lib_cfg_size, PP_CFG_SETUP);
+		ret = hifi_codec_load_config(dev, lib_cfg, lib_cfg_size, PP_CFG_SETUP);
 		if (ret) {
 			comp_err(dev, "generic_processor_new(): error %x: failed to set config for lib",
 				 ret);
@@ -150,7 +150,7 @@ static struct comp_dev *generic_processor_new(const struct comp_driver *drv,
 	}
 
 	/* Init post processing lib */
-        ret = gp_init_lib(dev, cd->gp_config.codec_id);
+        ret = hifi_codec_init(dev, cd->gp_config.codec_id);
         if (ret) {
 		comp_err(dev, "generic_processor_new() error %x: lib initialization failed",
 			 ret);
@@ -203,18 +203,18 @@ static int generic_processor_prepare(struct comp_dev *dev)
 	/* TODO: check if paramerers has changed, and if so,
 	 * reset the library and start over.
 	 */
-	ret = gp_get_lib_state(&lib_state);
+	ret = hifi_codec_get_state(&lib_state);
 	if (ret) {
 		comp_err(dev, "generic_processor_prepare() error %x: could not get lib state",
 			 ret);
 		return -EIO;
-	} else if (lib_state >= PP_LIB_PREPARED) {
+	} else if (lib_state >= HIFI_ADAPTER_PREPARED) {
 		comp_info(dev, "generic_processor_prepare() lib already prepared");
 		goto done;
 	}
 
 	/* Prepare post processing library */
-	ret = gp_lib_prepare(dev, &cd->sdata);
+	ret = hifi_codec_prepare(dev, &cd->sdata);
 	if (ret) {
 		comp_err(dev, "generic_processor_prepare() error %x: lib prepare failed",
 			 ret);
@@ -226,7 +226,7 @@ static int generic_processor_prepare(struct comp_dev *dev)
 
         /* Do we have runtime config available? */
         if (cd->lib_r_cfg_avail) {
-                ret = gp_codec_apply_config(dev, PP_CFG_RUNTIME);
+                ret = hifi_codec_apply_config(dev, PP_CFG_RUNTIME);
                 if (ret) {
                         comp_err(dev, "generic_processor_prepare() error %x: lib config apply failed",
                                  ret);
@@ -445,7 +445,7 @@ static int generic_processor_copy(struct comp_dev *dev)
 		generic_processor_copy_to_lib(&source->stream,
 					 cd->sdata.lib_in_buff, lib_buff_size);
 
-		ret = gp_lib_process_data(dev, lib_buff_size, &produced);
+		ret = hifi_codec_process_data(dev, lib_buff_size, &produced);
 		if (ret) {
 			comp_err(dev, "generic_processor_copy() error %x: lib processing failed",
 				 ret);
@@ -503,7 +503,7 @@ static int gp_set_runtime_params(struct comp_dev *dev,
 	comp_info(dev, "gp_set_runtime_params(): num_of_elem %d, elem remain %d msg_index %u",
 		  cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
-	ret = gp_lib_get_max_blob_size(&lib_max_blob_size);
+	ret = hifi_codec_get_max_blob_size(&lib_max_blob_size);
 	if (ret) {
 		comp_err(dev, "gp_set_runtime_params() error: could not get blob size limit from the lib");
 		goto end;
@@ -542,7 +542,7 @@ static int gp_set_runtime_params(struct comp_dev *dev,
 		/* Config has been copied now we can load & apply it
 		 * depending on lib status.
 		 */
-		ret = gp_lib_load_config(dev, cd->gp_lib_runtime_config, size,
+		ret = hifi_codec_load_config(dev, cd->gp_lib_runtime_config, size,
 					 PP_CFG_RUNTIME);
 		if (ret) {
 			comp_err(dev, "gp_set_runtime_params() error %x: lib params load failed",
@@ -553,7 +553,7 @@ static int gp_set_runtime_params(struct comp_dev *dev,
 			/* Post processing is already prepared so we can apply runtime
 			 * config right away.
 			 */
-			ret = gp_codec_apply_config(dev, PP_CFG_RUNTIME);
+			ret = hifi_codec_apply_config(dev, PP_CFG_RUNTIME);
 			if (ret) {
 				comp_err(dev, "generic_processor_ctrl_set_data() error %x: lib config apply failed",
 					 ret);
@@ -581,7 +581,7 @@ static int gp_set_binary_data(struct comp_dev *dev,
 	 	   cdata->data->type);
 
 	switch (cdata->data->type) {
-		/* TODO: use enum gp_cfg_type instead of defines */
+		/* TODO: use enum hifi_codec_cfg_type instead of defines */
 	case PP_SETUP_CONFIG:
 		ret = gp_set_config(dev, cdata);
 		break;

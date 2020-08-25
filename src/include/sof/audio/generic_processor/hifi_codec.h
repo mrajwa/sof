@@ -5,12 +5,11 @@
  * Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
-#ifndef __SOF_AUDIO_PP_LIB_API__
-#define __SOF_AUDIO_PP_LIB_API__
+#ifndef __SOF_AUDIO_HIFI_CODEC_API__
+#define __SOF_AUDIO_HIFI_CODEC_API__
 
 #include <sof/audio/generic_processor/gp_common.h>
 #include <sof/audio/generic_processor/xa_apicmd_standards.h>
-#include <sof/audio/generic_processor/xa_dap_vlldp_api.h>
 #include <sof/audio/generic_processor/xa_error_standards.h>
 #include <sof/audio/generic_processor/xa_memory_standards.h>
 #include <sof/audio/generic_processor/xa_type_def.h>
@@ -26,9 +25,11 @@
 #define LIB_NAME_MAX_LEN 30
 
 #define HIFI_LIB_API_CALL(cmd, sub_cmd, value) \
-	hifi_adapter_lib_data.api((hifi_adapter_lib_data.self), (cmd), (sub_cmd), (value));\
+	hifi_codec_lib_data.api((hifi_codec_lib_data.self), (cmd), (sub_cmd), (value));\
 	if (ret != LIB_NO_ERROR) \
 		handle_error(dev, ret);
+
+extern xa_codec_func_t xa_dap_vlldp;
 
 struct processing_codec {
 	char id;
@@ -37,8 +38,7 @@ struct processing_codec {
 	xa_codec_func_t *api;
 };
 
-
-static struct processing_codec hifi_adapter_codec[] = {
+static struct processing_codec hifi_codec_codec[] = {
 	{
 		.id = 0,
 		.name = "",
@@ -56,30 +56,30 @@ static struct processing_codec hifi_adapter_codec[] = {
 /*****************************************************************************/
 /* Lib data structures							     */
 /*****************************************************************************/
-struct hifi_adapter_param {
+struct hifi_codec_param {
 	uint32_t id;
 	uint32_t size;
 	int32_t data[];
 };
 
-struct hifi_adapter_lib_config {
+struct hifi_codec_lib_config {
 	size_t size;
 	bool avail;
 	void *data; /* tlv config */
 };
 
-struct hifi_adapter_lib_data {
+struct hifi_codec_lib_data {
 	void *self;
 	xa_codec_func_t *api;
-	enum hifi_adapter_lib_state state;
+	enum hifi_codec_state state;
 	char name[LIB_NAME_MAX_LEN];
 	void *mem_tabs;
 	void *in_buff;
 	void *out_buff;
 	size_t in_buff_size;
 	size_t out_buff_size;
-	struct hifi_adapter_lib_config s_cfg;
-	struct hifi_adapter_lib_config r_cfg;
+	struct hifi_codec_lib_config s_cfg;
+	struct hifi_codec_lib_config r_cfg;
 };
 
-#endif /* __SOF_AUDIO_PP_LIB_API__ */
+#endif /* __SOF_AUDIO_HIFI_CODEC_API__ */
