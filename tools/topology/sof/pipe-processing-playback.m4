@@ -10,7 +10,7 @@ include(`buffer.m4')
 include(`pcm.m4')
 include(`dai.m4')
 include(`pipeline.m4')
-include(`post_process.m4')
+include(`codec_adapter.m4')
 include(`bytecontrol.m4')
 
 #
@@ -48,7 +48,7 @@ C_CONTROLBYTES(Post Process Setup Config, PIPELINE_ID,
 
 
 # Post process runtime params
-# NOTE! Below config only sets general part of post_process_runtime_config
+# NOTE! Below config only sets general part of CODEC_ADAPTER_runtime_config
 # struct. This is indicated by the apply_mask which always comes as first
 # four bytes.
 CONTROLBYTES_PRIV(PP_RUNTIME_PARAMS,
@@ -76,7 +76,7 @@ C_CONTROLBYTES(Post Process Runtime Params, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, DAI_PERIODS, 0, 0)
 
 
-W_POST_PROCESS(0, PIPELINE_FORMAT, 0, 2, 1, LIST(`             ', "Post Process Setup Config", "Post Process Runtime Params"))
+W_CODEC_ADAPTER(0, PIPELINE_FORMAT, 0, 2, 1, LIST(`             ', "Post Process Setup Config", "Post Process Runtime Params"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
@@ -90,13 +90,13 @@ W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 # Pipeline Graph
 #
-#  host PCM_P --> B0 --> POST_PROCESS -> B1 --> sink DAI0
+#  host PCM_P --> B0 --> CODEC_ADAPTER -> B1 --> sink DAI0
 
 P_GRAPH(pipe-pass-playback-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
-	`dapm(N_POST_PROCESS(0), N_BUFFER(0))',
-	`dapm(N_BUFFER(1), N_POST_PROCESS(0))'))
+	`dapm(N_CODEC_ADAPTER(0), N_BUFFER(0))',
+	`dapm(N_BUFFER(1), N_CODEC_ADAPTER(0))'))
 
 #
 # Pipeline Source and Sinks
