@@ -13,8 +13,8 @@
 /*****************************************************************************/
 
 enum hifi_codec_state {
-	HIFI_ADAPTER_DISABLED,
-	HIFI_ADAPTER_PREPARED
+	HIFI_CODEC_DISABLED,
+	HIFI_CODEC_PREPARED
 };
 
 enum hifi_codec_cfg_type {

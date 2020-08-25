@@ -24,21 +24,21 @@
 #define MAX_NO_OF_CHANNELS 8
 #define LIB_NAME_MAX_LEN 30
 
-#define HIFI_LIB_API_CALL(cmd, sub_cmd, value) \
-	hifi_codec_lib_data.api((hifi_codec_lib_data.self), (cmd), (sub_cmd), (value));\
+#define HIFI_CODEC_API_CALL(cmd, sub_cmd, value) \
+	hifi_codec_data.api((hifi_codec_data.self), (cmd), (sub_cmd), (value));\
 	if (ret != LIB_NO_ERROR) \
 		handle_error(dev, ret);
 
 extern xa_codec_func_t xa_dap_vlldp;
 
-struct processing_codec {
+struct hifi_processing_codec {
 	char id;
 	char *name;
 	char *version;
 	xa_codec_func_t *api;
 };
 
-static struct processing_codec hifi_codec_codec[] = {
+static struct hifi_processing_codec hifi_codec_lib[] = {
 	{
 		.id = 0,
 		.name = "",
@@ -62,24 +62,25 @@ struct hifi_codec_param {
 	int32_t data[];
 };
 
-struct hifi_codec_lib_config {
+struct hifi_codec_config {
 	size_t size;
 	bool avail;
 	void *data; /* tlv config */
 };
 
-struct hifi_codec_lib_data {
+struct hifi_codec_data {
 	void *self;
 	xa_codec_func_t *api;
 	enum hifi_codec_state state;
 	char name[LIB_NAME_MAX_LEN];
 	void *mem_tabs;
+	//TODO: add linked list of memory blocks for mem_tabs
 	void *in_buff;
 	void *out_buff;
 	size_t in_buff_size;
 	size_t out_buff_size;
-	struct hifi_codec_lib_config s_cfg;
-	struct hifi_codec_lib_config r_cfg;
+	struct hifi_codec_config s_cfg;
+	struct hifi_codec_config r_cfg;
 };
 
 #endif /* __SOF_AUDIO_HIFI_CODEC_API__ */

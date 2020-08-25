@@ -11,11 +11,10 @@
 
 #include <sof/audio/generic_processor/hifi_codec.h>
 
-static struct hifi_codec_lib_data hifi_codec_lib_data;
+static struct hifi_codec_data hifi_codec_data;
 
 static inline void *allocate_lib_obj(size_t obj_size)
 {
-
 	return rballoc(0, SOF_MEM_CAPS_RAM, obj_size);
 }
 
@@ -52,50 +51,49 @@ static void handle_error(struct comp_dev *dev, int error) {
 int hifi_codec_init(struct comp_dev *dev, uint32_t codec_id) {
 	int ret;
 	size_t lib_obj_size;
-	int *debug = (void *)0x9e008000;
-	comp_dbg(dev, "hifi_codec_init() start");
 
-	*debug = 0xFEED0;
+	comp_info(dev, "hifi_codec_init() start");
+
 	/* select API */
-	//TODO check if codec_id is not bigger than hifi_codec_codec array size
-	*(debug+1) = codec_id;
-	hifi_codec_lib_data.api = hifi_codec_codec[codec_id].api;
-	*(debug+2) = 0xFEED1;
-	if (!hifi_codec_lib_data.api) {
-		comp_err(dev, "hifi_codec_init() error %x: failed to assign API function.");
+	if (codec_id >
+	    sizeof(hifi_codec_lib) / sizeof(struct hifi_processing_codec)) {
+		comp_err(dev, "hifi_codec_init() error: invalid codec_id");
+		ret = -EIO;
+		goto out;
+	} else if (!hifi_codec_lib[codec_id].api) {
+		comp_err(dev, "hifi_codec_init() error %x: failed to assign API function");
 		ret = -EIO;
 		goto out;
 	}
 
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_GET_LIB_ID_STRINGS,
-			      XA_CMD_TYPE_LIB_NAME,
-			      hifi_codec_lib_data.name);
-
-	*(debug+3) = 0xFEED2;
+	hifi_codec_data.api = hifi_codec_lib[codec_id].api;
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_GET_LIB_ID_STRINGS,
+				  XA_CMD_TYPE_LIB_NAME,
+				  hifi_codec_data.name);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "hifi_codec_init() error %x: failed to get lib name",
 			 ret);
 		goto out;
 	}
 
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_GET_API_SIZE, 0, &lib_obj_size);
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_GET_API_SIZE, 0, &lib_obj_size);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "hifi_codec_init() error %x: failed to get lib object size",
 			 ret);
 		goto out;
 	}
 
-	hifi_codec_lib_data.self = allocate_lib_obj(lib_obj_size);
-	if (!hifi_codec_lib_data.self) {
+	hifi_codec_data.self = allocate_lib_obj(lib_obj_size);
+	if (!hifi_codec_data.self) {
 		comp_err(dev, "hifi_codec_init() error: failed to allocate space for lib object");
 		goto out;
 	} else {
 		comp_dbg(dev, "hifi_codec_init(): allocated space for lib object");
 	}
 
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_INIT,
-			      XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
-			      NULL);
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_INIT,
+				  XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
+				  NULL);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "hifi_codec_init(): error %x: failed to set default config",
 			     ret);
@@ -109,11 +107,11 @@ int hifi_codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		       enum hifi_codec_cfg_type type)
 {
 	int ret;
-	struct hifi_codec_lib_config *dst;
+	struct hifi_codec_config *dst;
 
 	comp_dbg(dev, "hifi_codec_load_config() start");
 
-	dst = (type == PP_CFG_SETUP) ? &hifi_codec_lib_data.s_cfg : &hifi_codec_lib_data.r_cfg;
+	dst = (type == PP_CFG_SETUP) ? &hifi_codec_data.s_cfg : &hifi_codec_data.r_cfg;
 
 	if (!cfg) {
 		comp_err(dev, "hifi_codec_load_config() error: NULL config passed!");
@@ -143,7 +141,7 @@ int hifi_codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 	return ret;
 }
 
-static inline void *allocate_lib_memory(size_t size, size_t alignment) {
+static inline void *allocate_codec_memory(size_t size, size_t alignment) {
 
 	return rballoc_align(0, SOF_MEM_CAPS_RAM, size, alignment);
 }
@@ -152,10 +150,10 @@ static int init_memory_tables(struct comp_dev *dev) {
 	int ret, no_mem_tables, i, mem_type, mem_size, mem_alignment;
 	void *ptr;
 
-	/* calculate the size of all memory blocks required */
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_INIT,
-			      XA_CMD_TYPE_INIT_API_POST_CONFIG_PARAMS,
-			      NULL);
+	/* Calculate the size of all memory blocks required */
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_INIT,
+				  XA_CMD_TYPE_INIT_API_POST_CONFIG_PARAMS,
+				  NULL);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "init_memory_tables() error %x: failed to calculate memory blocks size",
 			 ret);
@@ -163,7 +161,7 @@ static int init_memory_tables(struct comp_dev *dev) {
 	}
 
 	/* Get number of memory tables */
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_GET_N_MEMTABS, 0, &no_mem_tables);
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_GET_N_MEMTABS, 0, &no_mem_tables);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "init_memory_tables() error %x: failed to get number of memory tables",
 			 ret);
@@ -172,7 +170,7 @@ static int init_memory_tables(struct comp_dev *dev) {
 
 	/* Initialize each memory table */
 	for (i = 0; i < no_mem_tables; i++) {
-		ret = HIFI_LIB_API_CALL(XA_API_CMD_GET_MEM_INFO_TYPE, i,
+		ret = HIFI_CODEC_API_CALL(XA_API_CMD_GET_MEM_INFO_TYPE, i,
 				      &mem_type);
 		if (ret != LIB_NO_ERROR) {
 			comp_err(dev, "init_memory_tables() error %x: failed to get mem. type info of id %d out of %d",
@@ -180,7 +178,7 @@ static int init_memory_tables(struct comp_dev *dev) {
 			goto err;
 		}
 
-		ret = HIFI_LIB_API_CALL(XA_API_CMD_GET_MEM_INFO_SIZE, i,
+		ret = HIFI_CODEC_API_CALL(XA_API_CMD_GET_MEM_INFO_SIZE, i,
 				      &mem_size);
 		if (ret != LIB_NO_ERROR) {
 			comp_err(dev, "init_memory_tables() error %x: failed to get mem. size for mem. type %d",
@@ -188,15 +186,15 @@ static int init_memory_tables(struct comp_dev *dev) {
 			goto err;
 		}
 
-		ret = HIFI_LIB_API_CALL(XA_API_CMD_GET_MEM_INFO_ALIGNMENT, i,
+		ret = HIFI_CODEC_API_CALL(XA_API_CMD_GET_MEM_INFO_ALIGNMENT, i,
 				      &mem_alignment);
 		if (ret != LIB_NO_ERROR) {
 			comp_err(dev, "init_memory_tables() error %x: failed to get mem. alignment of mem. type %d",
 				 ret, mem_type);
 			goto err;
 		}
-
-		ptr = allocate_lib_memory(mem_size, mem_alignment);
+		//TODO: keep record of these memory blocks as we need to free it at some point
+		ptr = allocate_codec_memory(mem_size, mem_alignment);
 		if (!ptr) {
 			comp_err(dev, "init_memory_tables() error %x: failed to allocate memory for %d",
 				ret, mem_type);
@@ -204,7 +202,7 @@ static int init_memory_tables(struct comp_dev *dev) {
 			goto err;
 		}
 
-		ret = HIFI_LIB_API_CALL(XA_API_CMD_SET_MEM_PTR, i, ptr);
+		ret = HIFI_CODEC_API_CALL(XA_API_CMD_SET_MEM_PTR, i, ptr);
 		if (ret != LIB_NO_ERROR) {
 			comp_err(dev, "init_memory_tables() error %x: failed to set memory pointer for %d",
 				 ret, mem_type);
@@ -216,12 +214,12 @@ static int init_memory_tables(struct comp_dev *dev) {
 		case XA_MEMTYPE_PERSIST:
 			break;
 		case XA_MEMTYPE_INPUT:
-			hifi_codec_lib_data.in_buff = ptr;
-			hifi_codec_lib_data.in_buff_size = mem_size;
+			hifi_codec_data.in_buff = ptr;
+			hifi_codec_data.in_buff_size = mem_size;
 			break;
 		case XA_MEMTYPE_OUTPUT:
-			hifi_codec_lib_data.out_buff = ptr;
-			hifi_codec_lib_data.out_buff_size = mem_size;
+			hifi_codec_data.out_buff = ptr;
+			hifi_codec_data.out_buff_size = mem_size;
 			break;
 		default:
 			comp_err(dev, "init_memory_tables() error %x: unrecognized memory type!",
@@ -250,14 +248,14 @@ int hifi_codec_apply_config(struct comp_dev *dev, enum hifi_codec_cfg_type type)
 {
 	int ret;
 	int size;
-	struct hifi_codec_lib_config *cfg;
+	struct hifi_codec_config *cfg;
 	struct hifi_codec_param *param;
 	int *debug = (void *)0x9e008000;
 	static int i;
 
 	comp_dbg(dev, "hifi_codec_apply_config() start");
 
-	cfg = (type == PP_CFG_SETUP) ? &hifi_codec_lib_data.s_cfg : &hifi_codec_lib_data.r_cfg;
+	cfg = (type == PP_CFG_SETUP) ? &hifi_codec_data.s_cfg : &hifi_codec_data.r_cfg;
 
 	*(debug+i++) = 0xFEED0;
 
@@ -277,7 +275,7 @@ int hifi_codec_apply_config(struct comp_dev *dev, enum hifi_codec_cfg_type type)
 		*(debug+i++) = param->data[0];
 		comp_dbg(dev, "hifi_codec_apply_config() applying param %d value %d",
 			 param->id, param->data[0]);
-		ret = HIFI_LIB_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
+		ret = HIFI_CODEC_API_CALL(XA_API_CMD_SET_CONFIG_PARAM,
 			      param->id,
 			      param->data);
 		if (ret != LIB_NO_ERROR) {
@@ -302,7 +300,7 @@ ret:
 }
 
 int hifi_codec_prepare(struct comp_dev *dev,
-		   struct generic_processor_shared_data *sdata)
+		       struct generic_processor_shared_data *sdata)
 {
 	int ret, mem_tabs_size, lib_init_status;
 
@@ -317,7 +315,7 @@ int hifi_codec_prepare(struct comp_dev *dev,
 	}
 
 	/* Allocate memory for the codec */
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_GET_MEMTABS_SIZE,
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_GET_MEMTABS_SIZE,
 			      0,
 			      &mem_tabs_size);
 	if (ret != LIB_NO_ERROR) {
@@ -326,8 +324,8 @@ int hifi_codec_prepare(struct comp_dev *dev,
 		goto err;
 	}
 
-	hifi_codec_lib_data.mem_tabs = allocate_memtabs_container(mem_tabs_size);
-	if (!hifi_codec_lib_data.mem_tabs) {
+	hifi_codec_data.mem_tabs = allocate_memtabs_container(mem_tabs_size);
+	if (!hifi_codec_data.mem_tabs) {
 		comp_err(dev, "hifi_codec_prepare() error: failed to allocate space for memtabs");
 		ret = -EINVAL;
 		goto err;
@@ -336,8 +334,8 @@ int hifi_codec_prepare(struct comp_dev *dev,
 			 mem_tabs_size);
 	}
 
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_SET_MEMTABS_PTR, 0,
-			      hifi_codec_lib_data.mem_tabs);
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_SET_MEMTABS_PTR, 0,
+			      hifi_codec_data.mem_tabs);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "hifi_codec_prepare() error %x: failed to set memtabs",
 			ret);
@@ -351,8 +349,8 @@ int hifi_codec_prepare(struct comp_dev *dev,
 		goto err;
 	}
 
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_INIT,
-			      XA_CMD_TYPE_INIT_PROCESS, NULL);
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_INIT,
+				  XA_CMD_TYPE_INIT_PROCESS, NULL);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "hifi_codec_prepare() error %x: failed to initialize codec",
 
@@ -360,14 +358,13 @@ int hifi_codec_prepare(struct comp_dev *dev,
 		goto err;
 	}
 
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
-			      &lib_init_status);
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
+				  &lib_init_status);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "hifi_codec_prepare() error %x: failed to get lib init status",
 			 ret);
 		goto err;
-	}
-	if (!lib_init_status) {
+	} else if (!lib_init_status) {
 		comp_err(dev, "hifi_codec_prepare() error: lib has not been initiated properly");
 		ret = -EINVAL;
 		goto err;
@@ -375,16 +372,16 @@ int hifi_codec_prepare(struct comp_dev *dev,
 		comp_dbg(dev, "hifi_codec_prepare(): lib has been initialized properly");
 	}
 
-
 	/* Share lib buffer data with post processing component */
-	sdata->lib_in_buff = hifi_codec_lib_data.in_buff;
-	sdata->lib_out_buff = hifi_codec_lib_data.out_buff;
-	sdata->lib_in_buff_size = hifi_codec_lib_data.in_buff_size;
+	sdata->lib_in_buff = hifi_codec_data.in_buff;
+	sdata->lib_out_buff = hifi_codec_data.out_buff;
+	sdata->lib_in_buff_size = hifi_codec_data.in_buff_size;
 
-	hifi_codec_lib_data.state = HIFI_ADAPTER_PREPARED;
+	hifi_codec_data.state = HIFI_CODEC_PREPARED;
 
 	return 0;
 err:
+//TODO: free memory allocated in init_memory_tables()
 	return ret;
 }
 
@@ -392,14 +389,14 @@ err:
 int hifi_codec_process_data(struct comp_dev *dev, size_t avail, size_t *produced) {
 	int ret;
 
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_SET_INPUT_BYTES, 0, &avail);
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_SET_INPUT_BYTES, 0, &avail);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "hifi_codec_process_data() error %x: failed to set size of input data",
 			 ret);
 		goto err;
 	}
 
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_EXECUTE, XA_CMD_TYPE_DO_EXECUTE,
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_EXECUTE, XA_CMD_TYPE_DO_EXECUTE,
 			      NULL);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "hifi_codec_process_data() error %x: processing failed",
@@ -407,7 +404,7 @@ int hifi_codec_process_data(struct comp_dev *dev, size_t avail, size_t *produced
 		goto err;
 	}
 
-	ret = HIFI_LIB_API_CALL(XA_API_CMD_GET_OUTPUT_BYTES, 0, produced);
+	ret = HIFI_CODEC_API_CALL(XA_API_CMD_GET_OUTPUT_BYTES, 0, produced);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "hifi_codec_process_data() error %x: could not get produced bytes",
 			 ret);
@@ -426,7 +423,7 @@ int hifi_codec_get_max_blob_size(uint32_t *size) {
 }
 
 int hifi_codec_get_state(bool *state) {
-	*state = hifi_codec_lib_data.state;
+	*state = hifi_codec_data.state;
 
 	return 0;
 }

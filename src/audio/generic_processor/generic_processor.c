@@ -37,13 +37,10 @@
 static const struct comp_driver comp_generic_processor;
 
 /* d8218443-5ff3-4a4c-b388-6cfe07b9562e */
-DECLARE_SOF_RT_UUID("pp", gp_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
+DECLARE_SOF_RT_UUID("gp", gp_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 		 0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0xAA);
 
 DECLARE_TR_CTX(gp_tr, SOF_UUID(gp_uuid), LOG_LEVEL_INFO);
-
-
-/* Private functions declarations */
 
 static struct comp_dev *generic_processor_new(const struct comp_driver *drv,
 					 struct sof_ipc_comp *comp)
@@ -70,7 +67,6 @@ static struct comp_dev *generic_processor_new(const struct comp_driver *drv,
 
 	ret = memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process),
 		       comp, sizeof(struct sof_ipc_comp_process));
-
 	assert(!ret);
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
@@ -81,34 +77,9 @@ static struct comp_dev *generic_processor_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, cd);
 
-	/* Load post processing runtime config from the topology. */
-	//TODO: if you return below, free allocated cd and dev!!!!
-	/*
-	Jak przekazac setup config zarówno dla compoentu generycznego PP oraz dla LIB?
-	wydaje sie, ze najmadrzej zrobic to tak, że w topologii tworzymy jednej config ale
-	dodajemy labelki na COMP/LIB i teraz zczytujemy to co dla lib po czym przesoamy tutaj
-	pointer i dalej config speczny dla lib'a. Jest pokusa, zeby zrobic to elegancko i zrobic
-	pewna czesc wspolna ale to utrudni caly proces. Dzieki temu rozwiazniu powyzej mozemy w tym
-	configu dla liba zakodowac rowniez parametr z jakim ma on byc wołany dzieki czemu
-	*/
+	/* Copy setup config */
 	cfg = (struct generic_processor_config *)ipc_generic_processor->data;
 	bs = ipc_generic_processor->size;
-
-	//przecieci przez ten config byte after byte co tam siedzi
-	comp_cl_info(&comp_generic_processor, "RAJWA: size of config data is %d", bs);
-	/*uint32_t *debug = (void *)0x9e008000;
-	int i = 0;
-	uint32_t *ptr = (uint32_t *)cfg;
-	*debug = 0xFEED0;
-	*(debug+i++) = sizeof(uint32_t);
-
-	while (bs > 0) {
-		*(debug+i++) = 0xFEED;
-		*(debug+i++) = *ptr;
-		ptr++;
-		bs -= sizeof(uint32_t);
-	}*/
-
 	if (bs) {
 		if (bs < sizeof(struct generic_processor_config)) {
 			comp_info(dev, "generic_processor_new() error: wrong size of post processing config");
@@ -117,31 +88,22 @@ static struct comp_dev *generic_processor_new(const struct comp_driver *drv,
 		ret = memcpy_s(&cd->gp_config, sizeof(cd->gp_config), cfg,
 			       sizeof(struct generic_processor_config));
 		assert(!ret);
-		comp_cl_info(&comp_generic_processor, "RAJWA: sample rate: %d width %d, channels %d",
-			cd->gp_config.sample_rate,
-			cd->gp_config.sample_width,
-			cd->gp_config.channels);
-
 		ret = validate_config(&cd->gp_config);
 		if (ret) {
 			comp_err(dev, "generic_processor_new(): error: validation of pp config failed");
 			goto err;
 		}
 
-		/* Pass config further to the library */
-		/* move this part to prepare - so in real timne use case it will work like this
-		somebody creates the component and than loads the config as they wish */
+		/* Pass config further to the codec */
 		lib_cfg = (char *)cfg + sizeof(struct generic_processor_config);
 		lib_cfg_size = bs - sizeof(struct generic_processor_config);
-		comp_cl_info(&comp_generic_processor, "RAJWA: size of lib_cfg is %d, first byte %d",
-			      lib_cfg_size, *((char *)lib_cfg));
 		ret = hifi_codec_load_config(dev, lib_cfg, lib_cfg_size, PP_CFG_SETUP);
 		if (ret) {
-			comp_err(dev, "generic_processor_new(): error %x: failed to set config for lib",
+			comp_err(dev, "generic_processor_new(): error %x: failed to load config for codec",
 				 ret);
 
 		} else {
-			comp_info(dev, "generic_processor_new() lib conffig set successfully");
+			comp_info(dev, "generic_processor_new() codec config load successfully");
 		}
 
 	} else {
@@ -149,7 +111,7 @@ static struct comp_dev *generic_processor_new(const struct comp_driver *drv,
 		goto err;
 	}
 
-	/* Init post processing lib */
+	/* Init processing codec */
         ret = hifi_codec_init(dev, cd->gp_config.codec_id);
         if (ret) {
 		comp_err(dev, "generic_processor_new() error %x: lib initialization failed",
@@ -193,6 +155,7 @@ static int generic_processor_prepare(struct comp_dev *dev)
                 return -EINVAL;
         }
 
+	/* Are we already prepared? */
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
@@ -200,20 +163,17 @@ static int generic_processor_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* TODO: check if paramerers has changed, and if so,
-	 * reset the library and start over.
-	 */
 	ret = hifi_codec_get_state(&lib_state);
 	if (ret) {
 		comp_err(dev, "generic_processor_prepare() error %x: could not get lib state",
 			 ret);
 		return -EIO;
-	} else if (lib_state >= HIFI_ADAPTER_PREPARED) {
+	} else if (lib_state >= HIFI_CODEC_PREPARED) {
 		comp_info(dev, "generic_processor_prepare() lib already prepared");
 		goto done;
 	}
 
-	/* Prepare post processing library */
+	/* Prepare HiFi codec library */
 	ret = hifi_codec_prepare(dev, &cd->sdata);
 	if (ret) {
 		comp_err(dev, "generic_processor_prepare() error %x: lib prepare failed",
@@ -225,7 +185,7 @@ static int generic_processor_prepare(struct comp_dev *dev)
 	}
 
         /* Do we have runtime config available? */
-        if (cd->lib_r_cfg_avail) {
+        if (cd->codec_r_cfg_avail) {
                 ret = hifi_codec_apply_config(dev, PP_CFG_RUNTIME);
                 if (ret) {
                         comp_err(dev, "generic_processor_prepare() error %x: lib config apply failed",
@@ -273,53 +233,10 @@ static int generic_processor_reset(struct comp_dev *dev)
 	comp_cl_info(&comp_generic_processor, "generic_processor_reset(): resetting");
 
         cd->state = PP_STATE_CREATED;
+        //TODO: reset codec params
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
-
-
-// static void generic_processor_copy_to_sink(struct audio_stream *sink,
-// 			       const struct audio_stream *source,
-// 			       size_t size)
-// {
-//     void *dst;
-//     void *src;
-//     size_t i;
-//     size_t j = 0;
-//     size_t channel;
-//     size_t channels = source->channels;
-//     size_t sample_width = source->frame_fmt == SOF_IPC_FRAME_S16_LE ?
-// 			  16 : 32;
-//     size_t frames = size / (sample_width / 8 * channels);
-
-//     for (i = 0; i < frames; i++) {
-// 	for (channel = 0; channel < channels; channel++) {
-// 	    switch (sample_width) {
-// #if CONFIG_FORMAT_S16LE
-// 	    case 16:
-// 		dst = audio_stream_write_frag_s16(sink, j);
-// 		src = audio_stream_read_frag_s16(source, j);
-// 		*((int16_t *)dst) = *((int16_t *)src);
-// 		break;
-// #endif /* CONFIG_FORMAT_S16LE
-// #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-// 	    case 24:
-// 		/* FALLTHROUGH */
-// 	    case 32:
-// 		dst = audio_stream_write_frag_s32(sink, j);
-// 		src = audio_stream_read_frag_s32(source, j);
-// 		*((int32_t *)dst) = *((int32_t *)src);
-// 		break;
-// #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE*/
-// 	    default:
-// 		comp_cl_info(&comp_generic_processor, "KPB: An attempt to copy "
-// 			"not supported format!");
-// 		return;
-// 	    }
-// 	    j++;
-// 	}
-//     }
-// }*/
 
 static void generic_processor_copy_to_lib(const struct audio_stream *source,
 			      void *lib_buff, size_t size)
@@ -399,35 +316,16 @@ static void generic_processor_copy_from_lib_to_sink(void *source, struct audio_s
 	}
 }
 
-
-static inline int read_prid(void)
-{
-	int reg;
-    __asm__ __volatile__("rsr.prid %0\n\t"
-            : : "a" (reg));
-    return reg;
-}
-
-static inline int read_ps(void)
-{
-	int reg;
-    __asm__ __volatile__("rsr.ps %0\n\t"
-            : : "a" (reg));
-    return reg;
-}
-
 static int generic_processor_copy(struct comp_dev *dev)
 {
-	int ret;
+	int ret = 0;
 	uint32_t copy_bytes, bytes_to_process, produced, processed = 0;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source = cd->gp_source;
 	struct comp_buffer *sink = cd->gp_sink;
         uint32_t lib_buff_size = cd->sdata.lib_in_buff_size;
-	/*TODO: recognize if error was FATAL or non fatal end react accoringly */
 
-        comp_dbg(dev, "RAJWA: generic_processor_copy() start. Core %d PS %x ",
-        	read_prid(), read_ps());
+        comp_info(dev, "generic_processor_copy() start");
 
         bytes_to_process = MIN(sink->stream.free, source->stream.avail);
 	copy_bytes = MIN(bytes_to_process, lib_buff_size);
@@ -436,11 +334,12 @@ static int generic_processor_copy(struct comp_dev *dev)
 		if (bytes_to_process < lib_buff_size) {
 			comp_dbg(dev, "generic_processor_copy(): skipping processing as we don't have enough data. Only %d bytes available in source buffer",
 			        bytes_to_process);
-			break;
+			ret = PPL_STATUS_PATH_STOP;
+			goto end;
 		}
 
 		/* Fill lib buffer completely. NOTE! If you don't fill whole buffer
-		 * the lib will not process the buffer!
+		 * the lib won't process it.
 		 */
 		generic_processor_copy_to_lib(&source->stream,
 					 cd->sdata.lib_in_buff, lib_buff_size);
@@ -449,6 +348,7 @@ static int generic_processor_copy(struct comp_dev *dev)
 		if (ret) {
 			comp_err(dev, "generic_processor_copy() error %x: lib processing failed",
 				 ret);
+			goto end;
 		} else if (produced == 0) {
 			/* skipping as lib has not produced anything */
                         comp_err(dev, "generic_processor_copy() error %x: lib hasn't processed anything",
@@ -458,21 +358,20 @@ static int generic_processor_copy(struct comp_dev *dev)
 		}
 
                 generic_processor_copy_from_lib_to_sink(cd->sdata.lib_out_buff,
-                                                   &sink->stream, produced);
+                					&sink->stream, produced);
 
 		bytes_to_process -= produced;
 		processed += produced;
 	}
+
 	if (!processed) {
-                comp_err(dev, "generic_processor_copy() error: failed to process anything in this call!");
-	       goto end;
-        }
-
-       comp_update_buffer_produce(sink, processed);
-       comp_update_buffer_consume(source, processed);
-
+		comp_err(dev, "generic_processor_copy() error: failed to process anything in this call!");
+		goto end;
+	}
+	comp_update_buffer_produce(sink, processed);
+	comp_update_buffer_consume(source, processed);
 end:
-	return 0;
+	return ret;
 }
 
 
@@ -480,8 +379,8 @@ static int gp_set_config(struct comp_dev *dev,
 			 struct sof_ipc_ctrl_data *cdata) {
 	//TODO add load of setup config
 	/* At this point the setup config is small enough so it fits
-	in single ipc therfore will be send in .new()
-	*/
+	 * in single ipc therfore will be send in .new()
+	 */
 	return 0;
 }
 
@@ -560,10 +459,8 @@ static int gp_set_runtime_params(struct comp_dev *dev,
 				goto end;
 			}
 		} else {
-			cd->lib_r_cfg_avail = true;
+			cd->codec_r_cfg_avail = true;
 		}
-
-
 	}
 
 end:
@@ -581,7 +478,7 @@ static int gp_set_binary_data(struct comp_dev *dev,
 	 	   cdata->data->type);
 
 	switch (cdata->data->type) {
-		/* TODO: use enum hifi_codec_cfg_type instead of defines */
+		/* TODO: use enum hifi_codec_cfg_type here */
 	case PP_SETUP_CONFIG:
 		ret = gp_set_config(dev, cdata);
 		break;
@@ -596,7 +493,6 @@ static int gp_set_binary_data(struct comp_dev *dev,
 
 	return ret;
 }
-
 
 static int generic_processor_ctrl_set_data(struct comp_dev *dev,
                                       struct sof_ipc_ctrl_data *cdata) {
@@ -629,7 +525,7 @@ static int generic_processor_ctrl_set_data(struct comp_dev *dev,
 	return ret;
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
+/* Used to pass standard and bespoke commands (with data) to component */
 static int generic_processor_cmd(struct comp_dev *dev, int cmd, void *data,
 			    int max_data_size)
 {

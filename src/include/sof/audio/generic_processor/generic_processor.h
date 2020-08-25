@@ -24,7 +24,7 @@ struct comp_data {
 	struct generic_processor_shared_data sdata;
 	struct comp_buffer *gp_sink;
 	struct comp_buffer *gp_source;
-	bool lib_r_cfg_avail;
+	bool codec_r_cfg_avail;
 	void *gp_lib_runtime_config;
 };
 
