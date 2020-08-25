@@ -37,10 +37,10 @@
 static const struct comp_driver comp_generic_processor;
 
 /* d8218443-5ff3-4a4c-b388-6cfe07b9562e */
-DECLARE_SOF_RT_UUID("pp", pp_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
+DECLARE_SOF_RT_UUID("pp", gp_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 		 0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0xAA);
 
-DECLARE_TR_CTX(pp_tr, SOF_UUID(pp_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(gp_tr, SOF_UUID(gp_uuid), LOG_LEVEL_INFO);
 
 
 /* Private functions declarations */
@@ -114,15 +114,15 @@ static struct comp_dev *generic_processor_new(const struct comp_driver *drv,
 			comp_info(dev, "generic_processor_new() error: wrong size of post processing config");
 			goto err;
 		}
-		ret = memcpy_s(&cd->pp_config, sizeof(cd->pp_config), cfg,
+		ret = memcpy_s(&cd->gp_config, sizeof(cd->gp_config), cfg,
 			       sizeof(struct generic_processor_config));
 		assert(!ret);
 		comp_cl_info(&comp_generic_processor, "RAJWA: sample rate: %d width %d, channels %d",
-			cd->pp_config.sample_rate,
-			cd->pp_config.sample_width,
-			cd->pp_config.channels);
+			cd->gp_config.sample_rate,
+			cd->gp_config.sample_width,
+			cd->gp_config.channels);
 
-		ret = validate_config(&cd->pp_config);
+		ret = validate_config(&cd->gp_config);
 		if (ret) {
 			comp_err(dev, "generic_processor_new(): error: validation of pp config failed");
 			goto err;
@@ -135,7 +135,7 @@ static struct comp_dev *generic_processor_new(const struct comp_driver *drv,
 		lib_cfg_size = bs - sizeof(struct generic_processor_config);
 		comp_cl_info(&comp_generic_processor, "RAJWA: size of lib_cfg is %d, first byte %d",
 			      lib_cfg_size, *((char *)lib_cfg));
-		ret = pp_lib_load_config(dev, lib_cfg, lib_cfg_size, PP_CFG_SETUP);
+		ret = gp_lib_load_config(dev, lib_cfg, lib_cfg_size, PP_CFG_SETUP);
 		if (ret) {
 			comp_err(dev, "generic_processor_new(): error %x: failed to set config for lib",
 				 ret);
@@ -150,7 +150,7 @@ static struct comp_dev *generic_processor_new(const struct comp_driver *drv,
 	}
 
 	/* Init post processing lib */
-        ret = pp_init_lib(dev, cd->pp_config.codec_id);
+        ret = gp_init_lib(dev, cd->gp_config.codec_id);
         if (ret) {
 		comp_err(dev, "generic_processor_new() error %x: lib initialization failed",
 			 ret);
@@ -180,15 +180,15 @@ static int generic_processor_prepare(struct comp_dev *dev)
 	comp_info(dev, "generic_processor_prepare() start");
 
 	/* Init sink & source buffers */
-	cd->pp_sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+	cd->gp_sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 				      source_list);
-        cd->pp_source = list_first_item(&dev->bsource_list, struct comp_buffer,
+        cd->gp_source = list_first_item(&dev->bsource_list, struct comp_buffer,
                                         sink_list);
 
-        if (!cd->pp_source) {
+        if (!cd->gp_source) {
                 comp_err(dev, "generic_processor_prepare() erro: source buffer not found");
                 return -EINVAL;
-        } else if (!cd->pp_sink) {
+        } else if (!cd->gp_sink) {
                 comp_err(dev, "generic_processor_prepare() erro: sink buffer not found");
                 return -EINVAL;
         }
@@ -203,7 +203,7 @@ static int generic_processor_prepare(struct comp_dev *dev)
 	/* TODO: check if paramerers has changed, and if so,
 	 * reset the library and start over.
 	 */
-	ret = pp_get_lib_state(&lib_state);
+	ret = gp_get_lib_state(&lib_state);
 	if (ret) {
 		comp_err(dev, "generic_processor_prepare() error %x: could not get lib state",
 			 ret);
@@ -214,7 +214,7 @@ static int generic_processor_prepare(struct comp_dev *dev)
 	}
 
 	/* Prepare post processing library */
-	ret = pp_lib_prepare(dev, &cd->sdata);
+	ret = gp_lib_prepare(dev, &cd->sdata);
 	if (ret) {
 		comp_err(dev, "generic_processor_prepare() error %x: lib prepare failed",
 			 ret);
@@ -226,7 +226,7 @@ static int generic_processor_prepare(struct comp_dev *dev)
 
         /* Do we have runtime config available? */
         if (cd->lib_r_cfg_avail) {
-                ret = pp_codec_apply_config(dev, PP_CFG_RUNTIME);
+                ret = gp_codec_apply_config(dev, PP_CFG_RUNTIME);
                 if (ret) {
                         comp_err(dev, "generic_processor_prepare() error %x: lib config apply failed",
                                  ret);
@@ -421,8 +421,8 @@ static int generic_processor_copy(struct comp_dev *dev)
 	int ret;
 	uint32_t copy_bytes, bytes_to_process, produced, processed = 0;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source = cd->pp_source;
-	struct comp_buffer *sink = cd->pp_sink;
+	struct comp_buffer *source = cd->gp_source;
+	struct comp_buffer *sink = cd->gp_sink;
         uint32_t lib_buff_size = cd->sdata.lib_in_buff_size;
 	/*TODO: recognize if error was FATAL or non fatal end react accoringly */
 
@@ -445,7 +445,7 @@ static int generic_processor_copy(struct comp_dev *dev)
 		generic_processor_copy_to_lib(&source->stream,
 					 cd->sdata.lib_in_buff, lib_buff_size);
 
-		ret = pp_lib_process_data(dev, lib_buff_size, &produced);
+		ret = gp_lib_process_data(dev, lib_buff_size, &produced);
 		if (ret) {
 			comp_err(dev, "generic_processor_copy() error %x: lib processing failed",
 				 ret);
@@ -476,7 +476,7 @@ end:
 }
 
 
-static int pp_set_config(struct comp_dev *dev,
+static int gp_set_config(struct comp_dev *dev,
 			 struct sof_ipc_ctrl_data *cdata) {
 	//TODO add load of setup config
 	/* At this point the setup config is small enough so it fits
@@ -485,7 +485,7 @@ static int pp_set_config(struct comp_dev *dev,
 	return 0;
 }
 
-static int pp_set_runtime_params(struct comp_dev *dev,
+static int gp_set_runtime_params(struct comp_dev *dev,
 			      struct sof_ipc_ctrl_data *cdata) {
 	int ret;
 	char *dst, *src;
@@ -495,22 +495,22 @@ static int pp_set_runtime_params(struct comp_dev *dev,
 
 	/* Stage 1 load whole config locally */
 	/* Check that there is no work-in-progress previous request */
-	if (cd->pp_lib_runtime_config && cdata->msg_index == 0) {
-		comp_err(dev, "pp_set_runtime_params() error: busy with previous request");
+	if (cd->gp_lib_runtime_config && cdata->msg_index == 0) {
+		comp_err(dev, "gp_set_runtime_params() error: busy with previous request");
 		return -EBUSY;
 	}
 
-	comp_info(dev, "pp_set_runtime_params(): num_of_elem %d, elem remain %d msg_index %u",
+	comp_info(dev, "gp_set_runtime_params(): num_of_elem %d, elem remain %d msg_index %u",
 		  cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
-	ret = pp_lib_get_max_blob_size(&lib_max_blob_size);
+	ret = gp_lib_get_max_blob_size(&lib_max_blob_size);
 	if (ret) {
-		comp_err(dev, "pp_set_runtime_params() error: could not get blob size limit from the lib");
+		comp_err(dev, "gp_set_runtime_params() error: could not get blob size limit from the lib");
 		goto end;
 	}
 	if (cdata->num_elems + cdata->elems_remaining > lib_max_blob_size)
 	{
-		comp_err(dev, "pp_set_runtime_params() error: blob size is too big!");
+		comp_err(dev, "gp_set_runtime_params() error: blob size is too big!");
 		ret = -EINVAL;
 		goto end;
 	}
@@ -518,18 +518,18 @@ static int pp_set_runtime_params(struct comp_dev *dev,
 	if (cdata->msg_index == 0) {
 		/* Allocate buffer for new params */
 		size = cdata->num_elems + cdata->elems_remaining;
-		cd->pp_lib_runtime_config = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		cd->gp_lib_runtime_config = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
-		if (!cd->pp_lib_runtime_config) {
-			comp_err(dev, "pp_set_runtime_params(): space allocation for new params failed");
+		if (!cd->gp_lib_runtime_config) {
+			comp_err(dev, "gp_set_runtime_params(): space allocation for new params failed");
 			ret = -EINVAL;
 			goto end;
 		}
-		memset(cd->pp_lib_runtime_config, 0, size);
+		memset(cd->gp_lib_runtime_config, 0, size);
 	}
 
 	offset = size - (cdata->num_elems + cdata->elems_remaining);
-	dst = (char *)cd->pp_lib_runtime_config + offset;
+	dst = (char *)cd->gp_lib_runtime_config + offset;
 	src = (char *)cdata->data->data;
 
 	ret = memcpy_s(dst,
@@ -542,10 +542,10 @@ static int pp_set_runtime_params(struct comp_dev *dev,
 		/* Config has been copied now we can load & apply it
 		 * depending on lib status.
 		 */
-		ret = pp_lib_load_config(dev, cd->pp_lib_runtime_config, size,
+		ret = gp_lib_load_config(dev, cd->gp_lib_runtime_config, size,
 					 PP_CFG_RUNTIME);
 		if (ret) {
-			comp_err(dev, "pp_set_runtime_params() error %x: lib params load failed",
+			comp_err(dev, "gp_set_runtime_params() error %x: lib params load failed",
 				 ret);
 			goto end;
         	}
@@ -553,7 +553,7 @@ static int pp_set_runtime_params(struct comp_dev *dev,
 			/* Post processing is already prepared so we can apply runtime
 			 * config right away.
 			 */
-			ret = pp_codec_apply_config(dev, PP_CFG_RUNTIME);
+			ret = gp_codec_apply_config(dev, PP_CFG_RUNTIME);
 			if (ret) {
 				comp_err(dev, "generic_processor_ctrl_set_data() error %x: lib config apply failed",
 					 ret);
@@ -567,29 +567,29 @@ static int pp_set_runtime_params(struct comp_dev *dev,
 	}
 
 end:
-	if (cd->pp_lib_runtime_config)
-		rfree(cd->pp_lib_runtime_config);
-	cd->pp_lib_runtime_config = NULL;
+	if (cd->gp_lib_runtime_config)
+		rfree(cd->gp_lib_runtime_config);
+	cd->gp_lib_runtime_config = NULL;
 	return ret;
 }
 
-static int pp_set_binary_data(struct comp_dev *dev,
+static int gp_set_binary_data(struct comp_dev *dev,
 			      struct sof_ipc_ctrl_data *cdata) {
 	int ret;
 
-	 comp_info(dev, "pp_set_binary_data() start, data type %d",
+	 comp_info(dev, "gp_set_binary_data() start, data type %d",
 	 	   cdata->data->type);
 
 	switch (cdata->data->type) {
-		/* TODO: use enum pp_cfg_type instead of defines */
+		/* TODO: use enum gp_cfg_type instead of defines */
 	case PP_SETUP_CONFIG:
-		ret = pp_set_config(dev, cdata);
+		ret = gp_set_config(dev, cdata);
 		break;
 	case PP_RUNTIME_PARAMS:
-		ret = pp_set_runtime_params(dev, cdata);
+		ret = gp_set_runtime_params(dev, cdata);
 		break;
 	default:
-		comp_err(dev, "pp_set_binary_data() error: unknown binary data type");
+		comp_err(dev, "gp_set_binary_data() error: unknown binary data type");
 		ret = -EIO;
 		break;
 	}
@@ -619,7 +619,7 @@ static int generic_processor_ctrl_set_data(struct comp_dev *dev,
 		ret = -EINVAL;
 		break;
 	case SOF_CTRL_CMD_BINARY:
-		ret = pp_set_binary_data(dev, cdata);
+		ret = gp_set_binary_data(dev, cdata);
 		break;
 	default:
 		comp_err(dev, "generic_processor_ctrl_set_data error: unknown set data command");
@@ -651,8 +651,8 @@ static int generic_processor_cmd(struct comp_dev *dev, int cmd, void *data,
 
 static const struct comp_driver comp_generic_processor = {
 	.type = SOF_COMP_GENERIC_PROCESSOR,
-	.uid = SOF_RT_UUID(pp_uuid),
-	.tctx = &pp_tr,
+	.uid = SOF_RT_UUID(gp_uuid),
+	.tctx = &gp_tr,
 	.ops = {
 		.create = generic_processor_new,
 		.free = generic_processor_free,
