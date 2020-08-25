@@ -321,6 +321,8 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(hd->chan, &avail_bytes,
 				&free_bytes);
+
+	comp_info(dev, "RAJWA: avail: %d, free %d", avail_bytes, free_bytes);
 	if (ret < 0) {
 		comp_cl_err(&comp_host, "host_get_copy_bytes_normal(): dma_get_data_size() failed, ret = %u",
 			    ret);
@@ -364,7 +366,7 @@ static int host_copy_normal(struct comp_dev *dev)
 	uint32_t flags = 0;
 	int ret = 0;
 
-	comp_dbg(dev, "host_copy_normal()");
+	comp_info(dev, "host_copy_normal()");
 
 	if (hd->copy_type == COMP_COPY_BLOCKING)
 		flags |= DMA_COPY_BLOCKING;

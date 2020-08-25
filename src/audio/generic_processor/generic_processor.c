@@ -325,36 +325,37 @@ static int generic_processor_copy(struct comp_dev *dev)
 	struct comp_buffer *sink = cd->gp_sink;
         uint32_t lib_buff_size = cd->sdata.lib_in_buff_size;
 
-        comp_info(dev, "generic_processor_copy() start");
 
         bytes_to_process = MIN(sink->stream.free, source->stream.avail);
 	copy_bytes = MIN(bytes_to_process, lib_buff_size);
 
+        comp_info(dev, "generic_processor_copy() start lib_buff_size: %d, copy_bytes: %d",
+        	  lib_buff_size, copy_bytes);
+
 	while (bytes_to_process) {
 		if (bytes_to_process < lib_buff_size) {
-			comp_dbg(dev, "generic_processor_copy(): skipping processing as we don't have enough data. Only %d bytes available in source buffer",
-			        bytes_to_process);
-			ret = PPL_STATUS_PATH_STOP;
-			goto end;
+			comp_info(dev, "generic_processor_copy(): processed %d in this call %d bytes left for next period",
+			        processed, bytes_to_process);
+			break;
 		}
 
 		/* Fill lib buffer completely. NOTE! If you don't fill whole buffer
 		 * the lib won't process it.
 		 */
 		generic_processor_copy_to_lib(&source->stream,
-					 cd->sdata.lib_in_buff, lib_buff_size);
+					      cd->sdata.lib_in_buff,
+					      lib_buff_size);
 
 		ret = hifi_codec_process_data(dev, lib_buff_size, &produced);
 		if (ret) {
 			comp_err(dev, "generic_processor_copy() error %x: lib processing failed",
 				 ret);
-			goto end;
+			break;
 		} else if (produced == 0) {
 			/* skipping as lib has not produced anything */
                         comp_err(dev, "generic_processor_copy() error %x: lib hasn't processed anything",
                                  ret);
-			ret = 0;
-			goto end;
+			break;
 		}
 
                 generic_processor_copy_from_lib_to_sink(cd->sdata.lib_out_buff,
@@ -367,10 +368,15 @@ static int generic_processor_copy(struct comp_dev *dev)
 	if (!processed) {
 		comp_err(dev, "generic_processor_copy() error: failed to process anything in this call!");
 		goto end;
+	} else {
+		comp_info(dev, "RAJWA: codec processed %d bytes", processed);
 	}
+
+
 	comp_update_buffer_produce(sink, processed);
 	comp_update_buffer_consume(source, processed);
 end:
+        comp_info(dev, "generic_processor_copy() end processed: %d", processed);
 	return ret;
 }
 

@@ -24,7 +24,7 @@ dnl     time_domain, sched_comp)
 
 PIPELINE_PCM_ADD(sof/pipe-processing-playback.m4,
         7, 5, 2, s16le,
-        1000, 0, 1,
+        1000, 0, 0,
         48000, 48000, 48000)
 
 #
