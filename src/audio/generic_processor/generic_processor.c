@@ -37,7 +37,7 @@
 static const struct comp_driver comp_generic_processor;
 
 /* d8218443-5ff3-4a4c-b388-6cfe07b9562e */
-DECLARE_SOF_RT_UUID("gp", gp_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
+DECLARE_SOF_RT_UUID("generic_processor", gp_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 		 0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0xAA);
 
 DECLARE_TR_CTX(gp_tr, SOF_UUID(gp_uuid), LOG_LEVEL_INFO);
@@ -131,6 +131,35 @@ err:
 	if (dev)
 		rfree(dev);
 	return NULL;
+}
+
+static int generic_processor_verify_params(struct comp_dev *dev,
+			     	struct sof_ipc_stream_params *params)
+{
+	/* TODO check on GP level. Params to codec shall me sent
+	 * in dedicated binary_set ipc
+	 */
+	return 0;
+}
+
+static int generic_processor_params(struct comp_dev *dev,
+				    struct sof_ipc_stream_params *params)
+{
+	int ret = 0;
+
+	if (dev->state == COMP_STATE_PREPARE) {
+		comp_warn(dev, "generic_processor_params(): params has already been prepared.");
+		goto end;
+	}
+
+	ret = generic_processor_verify_params(dev, params);
+	if (ret < 0) {
+		comp_err(dev, "generic_processor_params(): pcm params verification failed");
+		goto end;
+	}
+
+end:
+	return ret;
 }
 
 static int generic_processor_prepare(struct comp_dev *dev)
@@ -558,7 +587,7 @@ static const struct comp_driver comp_generic_processor = {
 	.ops = {
 		.create = generic_processor_new,
 		.free = generic_processor_free,
-		.params = NULL,
+		.params = generic_processor_params,
 		.cmd = generic_processor_cmd,
 		.trigger = generic_processor_trigger,
 		.prepare = generic_processor_prepare,
