@@ -22,14 +22,6 @@ enum hifi_codec_cfg_type {
 	PP_CFG_RUNTIME
 };
 
-struct generic_processor_config {
-	uint32_t codec_id;
-	uint32_t reserved;
-	uint32_t sample_rate;
-	uint32_t sample_width;
-	uint32_t channels;
-};
-
 struct generic_processor_shared_data {
 	uint32_t lib_in_buff_size;
 	void *lib_in_buff;

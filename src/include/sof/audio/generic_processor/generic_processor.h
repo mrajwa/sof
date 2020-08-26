@@ -17,6 +17,14 @@ enum gp_state {
 	PP_STATE_RUN,
 };
 
+struct generic_processor_config {
+	uint32_t codec_id;
+	uint32_t reserved;
+	uint32_t sample_rate;
+	uint32_t sample_width;
+	uint32_t channels;
+};
+
 /* generic_processor private, runtime data */
 struct comp_data {
 	enum gp_state state;
@@ -33,4 +41,3 @@ static  inline int validate_config(struct generic_processor_config *cfg)
 	//TODO: custom validation of post processing paramters
 	return 0;
 }
-
