@@ -92,6 +92,11 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cfg,
 			       sizeof(struct ca_config));
 		assert(!ret);
+		ret = validate_setup_config(&cd->gp_config);
+		if (ret) {
+			comp_err(dev, "codec_adapter_new(): error: validation of setup config failed");
+			goto err;
+		}
 	} else {
 		comp_err(dev, "generic_processor_new(): no configuration available");
 		goto err;

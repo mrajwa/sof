@@ -29,4 +29,10 @@ struct comp_data {
 	struct ca_config ca_config;
 };
 
+static  inline int validate_setup_config(struct ca_config *cfg)
+{
+	/* TODO: custom validation of codec_adapter setup parameters */
+	return 0;
+}
+
 #endif /* __SOF_AUDIO_CODEC_ADAPTER__ */
