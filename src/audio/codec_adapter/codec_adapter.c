@@ -48,6 +48,10 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	int ret;
 	struct comp_dev *dev = NULL;
 	struct comp_data *cd = NULL;
+	struct sof_ipc_comp_process *ipc_codec_adapter =
+		(struct sof_ipc_comp_process *)comp;
+	struct ca_config *cfg;
+	size_t bs;
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_new()");
 
@@ -76,6 +80,22 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	}
 
 	comp_set_drvdata(dev, cd);
+
+	/* Copy setup config */
+	cfg = (struct ca_config *)ipc_codec_adapter->data;
+	bs = ipc_codec_adapter->size;
+	if (bs) {
+		if (bs < sizeof(struct ca_config)) {
+			comp_info(dev, "generic_processor_new() error: wrong size of setup config");
+			goto err;
+		}
+		ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cfg,
+			       sizeof(struct ca_config));
+		assert(!ret);
+	} else {
+		comp_err(dev, "generic_processor_new(): no configuration available");
+		goto err;
+	}
 
 	dev->state = COMP_STATE_READY;
 	cd->state = PP_STATE_CREATED;
