@@ -52,6 +52,8 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		(struct sof_ipc_comp_process *)comp;
 	struct ca_config *cfg;
 	size_t bs;
+	void *lib_cfg;
+	size_t lib_cfg_size;
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_new()");
 
@@ -96,6 +98,17 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		if (ret) {
 			comp_err(dev, "codec_adapter_new(): error: validation of setup config failed");
 			goto err;
+		}
+
+		/* Pass config further to the codec */
+		lib_cfg = (char *)cfg + sizeof(struct ca_config);
+		lib_cfg_size = bs - sizeof(struct ca_config);
+		ret = codec_load_config(dev, lib_cfg, lib_cfg_size, CODEC_CFG_SETUP);
+		if (ret) {
+			comp_err(dev, "codec_adapter_new(): error %x: failed to load setup config for codec",
+				 ret);
+		} else {
+			comp_dbg(dev, "codec_adapter_new() codec config loaded successfully");
 		}
 	} else {
 		comp_err(dev, "generic_processor_new(): no configuration available");

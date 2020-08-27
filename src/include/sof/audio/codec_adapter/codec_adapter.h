@@ -8,6 +8,8 @@
 #ifndef __SOF_AUDIO_CODEC_ADAPTER__
 #define __SOF_AUDIO_CODEC_ADAPTER__
 
+#include <sof/audio/codec_adapter/codec/generic.h>
+
 enum ca_state {
 	PP_STATE_DISABLED = 0,
 	PP_STATE_CREATED,
