@@ -17,6 +17,12 @@
 /*****************************************************************************/
 /* Codec API interface							     */
 /*****************************************************************************/
+#if CONFIG_CADENCE_CODEC
+#define HIFI_CODEC_API_CALL(cmd, sub_cmd, value, ret) \
+	ret = hifi_codec_data.api((hifi_codec_data.self), \
+				  (cmd), (sub_cmd), (value));
+#endif
+
 struct processing_codec {
 	char id;
 	char *name;
@@ -54,6 +60,7 @@ struct codec_config {
 };
 
 struct codec_data {
+	void *self;
 	struct codec_config s_cfg;
 	struct codec_config r_cfg;
 };
