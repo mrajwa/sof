@@ -65,3 +65,28 @@ err:
 	dst->data = NULL;
 	return ret;
 }
+
+int codec_init(struct comp_dev *dev, uint32_t codec_id)
+{
+	int ret;
+
+	comp_info(dev, "codec_init() start");
+
+	/* select API */
+	if (codec_id >
+	    sizeof(codec_lib) / sizeof(struct processing_codec)) {
+		comp_err(dev, "codec_init() error: invalid codec_id");
+		ret = -EINVAL;
+		goto out;
+	} else if (!codec_lib[codec_id].api) {
+		comp_err(dev, "codec_init() error %x: failed to assign API function");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	codec_data.api = codec_lib[codec_id].api;
+
+	comp_info(dev, "codec_init() done");
+out:
+	return ret;
+}

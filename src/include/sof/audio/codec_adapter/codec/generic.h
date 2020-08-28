@@ -15,6 +15,31 @@
 #include <sof/audio/component.h>
 
 /*****************************************************************************/
+/* Codec API interface							     */
+/*****************************************************************************/
+struct processing_codec {
+	char id;
+	char *name;
+	char *version;
+	void *api;
+};
+
+static struct processing_codec codec_lib[] = {
+	{
+		.id = 0,
+		.name = NULL,
+		.version = NULL,
+		.api = NULL
+	},
+	{
+		.id = 1,
+		.name = NULL,
+		.version = NULL,
+		.api = NULL
+	},
+};
+
+/*****************************************************************************/
 /* Codec generic data types						     */
 /*****************************************************************************/
 enum codec_cfg_type {
@@ -38,5 +63,5 @@ struct codec_data {
 /*****************************************************************************/
 int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 			   enum codec_cfg_type type);
-
+int codec_init(struct comp_dev *dev, uint32_t codec_id);
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */
