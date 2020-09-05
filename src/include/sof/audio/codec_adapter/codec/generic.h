@@ -13,44 +13,24 @@
 #define __SOF_AUDIO_CODEC_GENERIC__
 
 #include <sof/audio/component.h>
-
-/*****************************************************************************/
-/* Codec API interface							     */
-/*****************************************************************************/
 #if CONFIG_CADENCE_CODEC
-#define HIFI_CODEC_API_CALL(cmd, sub_cmd, value, ret) \
-	ret = hifi_codec_data.api((hifi_codec_data.self), \
-				  (cmd), (sub_cmd), (value));
+#include <sof/audio/codec_adapter/codec/cadence.h>
 #endif
-
-struct processing_codec {
-	char id;
-	char *name;
-	char *version;
-	void *api;
-};
-
-static struct processing_codec codec_lib[] = {
-	{
-		.id = 0,
-		.name = NULL,
-		.version = NULL,
-		.api = NULL
-	},
-	{
-		.id = 1,
-		.name = NULL,
-		.version = NULL,
-		.api = NULL
-	},
-};
 
 /*****************************************************************************/
 /* Codec generic data types						     */
 /*****************************************************************************/
+struct codec_interface {
+	uint32_t id;
+	int (*init)(struct comp_dev *dev);
+	int (*prepare)(struct comp_dev *dev);
+	//.prepare =
+	//.api =
+};
+
 enum codec_cfg_type {
 	CODEC_CFG_SETUP,
-	PP_CFG_RUNTIME
+	CODEC_CFG_RUNTIME
 };
 
 struct codec_config {
@@ -59,16 +39,36 @@ struct codec_config {
 	void *data; /* tlv config */
 };
 
+struct codec_processing_data {
+	uint32_t lib_in_buff_size;
+	uint32_t avail;
+	uint32_t produced;
+	void *lib_in_buff;
+	void *lib_out_buff;
+};
+
 struct codec_data {
-	void *self;
-	struct codec_config s_cfg;
-	struct codec_config r_cfg;
+	char *name;
+	char *version;
+	void *private; /**< self object, memory tables etc here */
+	struct codec_config s_cfg; /**< setup config */
+	struct codec_config r_cfg; /**< runtime config */
+	struct codec_processing_data cpd; /**< shared data comp <-> codec */
+	struct codec_interface *interface;
+};
+
+/* codec_adapter private, runtime data */
+struct comp_data {
+	enum ca_state state; /**< current state of codec_adapter */
+	struct ca_config ca_config;
+	struct codec_data codec; /**< codec private data */
 };
 
 /*****************************************************************************/
 /* Codec generic interfaces						     */
 /*****************************************************************************/
 int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
-			   enum codec_cfg_type type);
-int codec_init(struct comp_dev *dev, uint32_t codec_id);
+		      enum codec_cfg_type type);
+int codec_init(struct comp_dev *dev);
+
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */

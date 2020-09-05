@@ -10,10 +10,9 @@
  */
 
 #include <sof/audio/codec_adapter/codec/generic.h>
+#include <sof/audio/codec_adapter/codec/interfaces.h>
 
-static struct codec_data codec_data;
-
-static int validate_config(struct hifi_codec_config *cfg)
+static int validate_config(struct codec_config *cfg)
 {
 	//TODO:
 	return 0;
@@ -24,11 +23,14 @@ int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 {
 	int ret;
 	struct codec_config *dst;
-
+	struct comp_data *cd = comp_get_drvdata(dev);
+	/* wyciagnij cd z dev i skopiuj config do pola "data", na tym etapie nie
+	trzeba wiedziec jaki to jest codec id
+	*/
 	comp_dbg(dev, "codec_load_config() start");
 
-	dst = (type == CODEC_CFG_SETUP) ? &codec_data.s_cfg :
-				       &codec_data.r_cfg;
+	dst = (type == CODEC_CFG_SETUP) ? cd->codec.s_cfg :
+					  cd->codec.r_cfg;
 
 	if (!cfg) {
 		comp_err(dev, "codec_load_config() error: NULL config passed!");
@@ -66,25 +68,47 @@ err:
 	return ret;
 }
 
-int codec_init(struct comp_dev *dev, uint32_t codec_id)
+int codec_init(struct comp_dev *dev)
 {
 	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint32_t codec_id = cd->ca_config.codec_id;
+	struct codec_interface *interface = NULL;
+	uint32_t i;
+	uint32_t no_of_interfaces = sizeof(interfaces) /
+				    sizeof(struct codec_interface);
 
 	comp_info(dev, "codec_init() start");
 
-	/* select API */
-	if (codec_id >
-	    sizeof(codec_lib) / sizeof(struct processing_codec)) {
-		comp_err(dev, "codec_init() error: invalid codec_id");
-		ret = -EINVAL;
+	/* Find proper interface */
+	for (i = 0; i < no_of_interfaces; i++) {
+		if (interfaces[i].id == codec_id)
+			interface = interfaces[i];
+			break;
+	}
+	if (!interface) {
+		comp_err(dev, "codec_init() error: could not find codec interface for codec id %x",
+			 codec_id);
+		ret = -EIO;
 		goto out;
-	} else if (!codec_lib[codec_id].api) {
-		comp_err(dev, "codec_init() error %x: failed to assign API function");
-		ret = -EINVAL;
+	} else if (!interface->init) {//TODO: verify other interfaces
+		comp_err(dev, "codec_init() error: codec %x is missing required interfaces",
+			 codec_id);
+		ret = -EIO;
 		goto out;
 	}
 
-	codec_data.api = codec_lib[codec_id].api;
+	/* Assign interface */
+	cd->codec.interface = interface;
+
+	/* Now we can proceed with codec specific initialization */
+	interface->init(dev);
+
+	//codec_data.api = codec_lib[codec_id].api;
+
+	//codec_data[codec_id].init(...);
+
+	//codec->interface.init(...);
 
 	comp_info(dev, "codec_init() done");
 out:

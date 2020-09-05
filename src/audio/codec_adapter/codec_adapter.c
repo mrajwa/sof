@@ -46,8 +46,8 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 					      struct sof_ipc_comp *comp)
 {
 	int ret;
-	struct comp_dev *dev = NULL;
-	struct comp_data *cd = NULL;
+	struct comp_dev *dev;
+	struct comp_data *cd;
 	struct sof_ipc_comp_process *ipc_codec_adapter =
 		(struct sof_ipc_comp_process *)comp;
 	struct ca_config *cfg;
@@ -58,15 +58,15 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_new()");
 
 	if (!drv || !comp) {
-		comp_cl_err(&comp_codec_adapter, "codec_adapter_new(), wrong input params! drv = %p comp = %p",
-			    drv, comp);
-		goto err;
+		comp_cl_err(&comp_codec_adapter, "codec_adapter_new(), wrong input params! drv = %x comp = %x",
+			    (uint32_t)drv, (uint32_t)comp);
+		return NULL;
 	}
 
 	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev) {
 		comp_cl_err(&comp_codec_adapter, "codec_adapter_new(), failed to allocate memory for comp_dev");
-		goto err;
+		return NULL;
 	}
 
 	dev->drv = drv;
@@ -78,12 +78,13 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		comp_cl_err(&comp_codec_adapter, "codec_adapter_new(), failed to allocate memory for comp_data");
-		goto err;
+		rfree(dev);
+		return NULL;
 	}
 
 	comp_set_drvdata(dev, cd);
 
-	/* Copy setup config */
+	/* Copy setup config of codec_adapter */
 	cfg = (struct ca_config *)ipc_codec_adapter->data;
 	bs = ipc_codec_adapter->size;
 	if (bs) {
@@ -94,7 +95,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cfg,
 			       sizeof(struct ca_config));
 		assert(!ret);
-		ret = validate_setup_config(&cd->gp_config);
+		ret = validate_setup_config(&cd->ca_config);
 		if (ret) {
 			comp_err(dev, "codec_adapter_new(): error: validation of setup config failed");
 			goto err;
@@ -103,7 +104,8 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		/* Pass config further to the codec */
 		lib_cfg = (char *)cfg + sizeof(struct ca_config);
 		lib_cfg_size = bs - sizeof(struct ca_config);
-		ret = codec_load_config(dev, lib_cfg, lib_cfg_size, CODEC_CFG_SETUP);
+		ret = codec_load_config(dev, lib_cfg, lib_cfg_size,
+					CODEC_CFG_SETUP);
 		if (ret) {
 			comp_err(dev, "codec_adapter_new(): error %x: failed to load setup config for codec",
 				 ret);
@@ -116,7 +118,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	}
 
 	/* Init processing codec */
-	ret = codec_init(dev, cd->ca_config.codec_id);
+	ret = codec_init(dev);
 	if (ret) {
 		comp_err(dev, "codec_adapter_new() error %x: codec initialization failed",
 			 ret);
@@ -128,15 +130,12 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 
 	return dev;
 err:
-	if (cd)
-		rfree(cd);
-	if (dev)
-		rfree(dev);
+	//TODO: handle errors
 	return NULL;
 }
 
 static const struct comp_driver comp_codec_adapter = {
-	.type = SOF_COMP_GENERIC_PROCESSOR,
+	.type = SOF_COMP_NONE,
 	.uid = SOF_RT_UUID(ca_uuid),
 	.tctx = &ca_tr,
 	.ops = {

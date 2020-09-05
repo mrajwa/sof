@@ -10,6 +10,9 @@
 
 #include <sof/audio/codec_adapter/codec/generic.h>
 
+/*****************************************************************************/
+/* Codec adapter data structures							     */
+/*****************************************************************************/
 enum ca_state {
 	PP_STATE_DISABLED = 0,
 	PP_STATE_CREATED,
@@ -23,12 +26,6 @@ struct ca_config {
 	uint32_t sample_rate;
 	uint32_t sample_width;
 	uint32_t channels;
-};
-
-/* codec_adapter private, runtime data */
-struct comp_data {
-	enum ca_state state; /* current state of codec_adapter */
-	struct ca_config ca_config;
 };
 
 static  inline int validate_setup_config(struct ca_config *cfg)
