@@ -102,18 +102,15 @@ int codec_init(struct comp_dev *dev)
 		ret = -EIO;
 		goto out;
 	}
-
 	/* Assign interface */
 	codec->call = interface;
-
 	/* Now we can proceed with codec specific initialization */
-	codec->call->init(dev);
-
-	//codec_data.api = codec_lib[codec_id].api;
-
-	//codec_data[codec_id].init(...);
-
-	//codec->interface.init(...);
+	ret = codec->call->init(dev);
+	if (ret) {
+		comp_err(dev, "codec_init() error %x: codec specific init failed, codec_id %x",
+			 ret, codec_id);
+		goto out;
+	}
 
 	comp_info(dev, "codec_init() done");
 out:
