@@ -12,7 +12,9 @@
 #define __SOF_AUDIO_CODEC_INTERFACES__
 
 #include <sof/audio/codec_adapter/codec/generic.h>
-
+#if CONFIG_CADENCE_CODEC
+#include <sof/audio/codec_adapter/codec/cadence.h>
+#endif
 
 /*****************************************************************************/
 /* Linked codecs interfaces						     */

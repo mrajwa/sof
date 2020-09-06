@@ -13,9 +13,8 @@
 #define __SOF_AUDIO_CODEC_GENERIC__
 
 #include <sof/audio/component.h>
-#if CONFIG_CADENCE_CODEC
-#include <sof/audio/codec_adapter/codec/cadence.h>
-#endif
+
+#define comp_get_codec_data(d) &(((struct comp_data *)(d->priv_data))->codec)
 
 /*****************************************************************************/
 /* Codec generic data types						     */
