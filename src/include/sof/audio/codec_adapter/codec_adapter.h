@@ -13,20 +13,7 @@
 /*****************************************************************************/
 /* Codec adapter data structures							     */
 /*****************************************************************************/
-enum ca_state {
-	PP_STATE_DISABLED = 0,
-	PP_STATE_CREATED,
-	PP_STATE_PREPARED,
-	PP_STATE_RUN,
-};
 
-struct ca_config {
-	uint32_t codec_id;
-	uint32_t reserved;
-	uint32_t sample_rate;
-	uint32_t sample_width;
-	uint32_t channels;
-};
 
 static  inline int validate_setup_config(struct ca_config *cfg)
 {

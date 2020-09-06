@@ -54,7 +54,22 @@ struct codec_data {
 	struct codec_config s_cfg; /**< setup config */
 	struct codec_config r_cfg; /**< runtime config */
 	struct codec_processing_data cpd; /**< shared data comp <-> codec */
-	struct codec_interface *interface;
+	struct codec_interface *call;
+};
+
+enum ca_state {
+	PP_STATE_DISABLED = 0,
+	PP_STATE_CREATED,
+	PP_STATE_PREPARED,
+	PP_STATE_RUN,
+};
+
+struct ca_config {
+	uint32_t codec_id;
+	uint32_t reserved;
+	uint32_t sample_rate;
+	uint32_t sample_width;
+	uint32_t channels;
 };
 
 /* codec_adapter private, runtime data */

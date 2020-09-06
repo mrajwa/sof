@@ -18,25 +18,28 @@ static int validate_config(struct codec_config *cfg)
 	return 0;
 }
 
-int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
-		       enum codec_cfg_type type)
+int
+codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
+		  enum codec_cfg_type type)
 {
 	int ret;
 	struct codec_config *dst;
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_data *codec = &cd->codec;
+
 	/* wyciagnij cd z dev i skopiuj config do pola "data", na tym etapie nie
 	trzeba wiedziec jaki to jest codec id
 	*/
 	comp_dbg(dev, "codec_load_config() start");
 
-	dst = (type == CODEC_CFG_SETUP) ? cd->codec.s_cfg :
-					  cd->codec.r_cfg;
-
-	if (!cfg) {
-		comp_err(dev, "codec_load_config() error: NULL config passed!");
-		ret = -EINVAL;
-		goto err;
+	if (!dev || !cfg || !size) {
+		comp_err(dev, "codec_load_config() error: wrong input params! dev %x, cfg %x size %d",
+			 (uint32_t)dev, (uint32_t)cfg, size);
+		return -EINVAL;
 	}
+
+	dst = (type == CODEC_CFG_SETUP) ? &codec->s_cfg :
+					  &codec->r_cfg;
 
 	dst->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
@@ -73,6 +76,7 @@ int codec_init(struct comp_dev *dev)
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t codec_id = cd->ca_config.codec_id;
+	struct codec_data *codec = &cd->codec;
 	struct codec_interface *interface = NULL;
 	uint32_t i;
 	uint32_t no_of_interfaces = sizeof(interfaces) /
@@ -82,9 +86,10 @@ int codec_init(struct comp_dev *dev)
 
 	/* Find proper interface */
 	for (i = 0; i < no_of_interfaces; i++) {
-		if (interfaces[i].id == codec_id)
-			interface = interfaces[i];
+		if (interfaces[i].id == codec_id) {
+			interface = &interfaces[i];
 			break;
+		}
 	}
 	if (!interface) {
 		comp_err(dev, "codec_init() error: could not find codec interface for codec id %x",
@@ -99,10 +104,10 @@ int codec_init(struct comp_dev *dev)
 	}
 
 	/* Assign interface */
-	cd->codec.interface = interface;
+	codec->call = interface;
 
 	/* Now we can proceed with codec specific initialization */
-	interface->init(dev);
+	codec->call->init(dev);
 
 	//codec_data.api = codec_lib[codec_id].api;
 

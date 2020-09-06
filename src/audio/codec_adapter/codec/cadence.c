@@ -12,10 +12,9 @@
 #include <sof/audio/codec_adapter/codec/generic.h>
 
 int cadence_codec_init(struct comp_dev *dev) {
-	int ret;
+	int ret = 0;
 
 	comp_info(dev, "cadence_codec_init() start");
 
-out:
 	return ret;
 }
