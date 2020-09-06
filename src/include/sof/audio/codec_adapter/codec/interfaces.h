@@ -17,6 +17,7 @@
 /*****************************************************************************/
 /* Linked codecs interfaces						     */
 /*****************************************************************************/
+//TODO: move it to a specific section
 static struct codec_interface interfaces[] = {
 	{
 		.id = 0xCADE01, /**< Cadence interface */

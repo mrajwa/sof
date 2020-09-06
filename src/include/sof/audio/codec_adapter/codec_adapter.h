@@ -14,7 +14,6 @@
 /* Codec adapter data structures							     */
 /*****************************************************************************/
 
-
 static  inline int validate_setup_config(struct ca_config *cfg)
 {
 	/* TODO: custom validation of codec_adapter setup parameters */
