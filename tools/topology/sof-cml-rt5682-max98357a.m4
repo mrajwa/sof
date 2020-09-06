@@ -22,7 +22,7 @@ dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
-PIPELINE_PCM_ADD(PIPE_VOLUME_PLAYBACK,
+PIPELINE_PCM_ADD(sof/pipe-processing-playback.m4,
 	7, 5, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
