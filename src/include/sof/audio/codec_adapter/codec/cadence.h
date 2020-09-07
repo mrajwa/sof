@@ -32,6 +32,7 @@ extern xa_codec_func_t xa_dap_vlldp;
 
 enum cadence_codec_state {
 	CADENCE_CODEC_DISABLED,
+	CADENCE_CODEC_INITIALIZED,
 	CADENCE_CODEC_PREPARED,
 	CADENCE_CODEC_RUNNING
 };
