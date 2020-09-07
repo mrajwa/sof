@@ -172,7 +172,7 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 	if (cd->codec.state >= CODEC_PREPARED)
-		;//TODO: perform codec reset
+		return PPL_STATUS_PATH_STOP; //TODO: reset codec here and start over
 
 	/* Prepare codec */
 	ret = codec_prepare(dev);
