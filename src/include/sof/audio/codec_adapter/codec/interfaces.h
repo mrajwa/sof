@@ -23,7 +23,8 @@
 static struct codec_interface interfaces[] = {
 	{
 		.id = 0xCADE01, /**< Cadence interface */
-		.init  = cadence_codec_init
+		.init  = cadence_codec_init,
+		.prepare = cadence_codec_prepare,
 	},
 };
 

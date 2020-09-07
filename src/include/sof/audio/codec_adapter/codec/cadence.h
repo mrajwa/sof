@@ -11,6 +11,7 @@
 #include <sof/audio/cadence/xa_type_def.h>
 #include <sof/audio/cadence/xa_apicmd_standards.h>
 #include <sof/audio/cadence/xa_error_standards.h>
+#include <sof/audio/cadence/xa_memory_standards.h>
 
 /*****************************************************************************/
 /* Codec API interface							     */
@@ -30,21 +31,19 @@ extern xa_codec_func_t xa_dap_vlldp;
 #define LIB_NAME_MAX_LEN 30
 #define LIB_NO_ERROR XA_NO_ERROR
 
-enum cadence_codec_state {
-	CADENCE_CODEC_DISABLED,
-	CADENCE_CODEC_INITIALIZED,
-	CADENCE_CODEC_PREPARED,
-	CADENCE_CODEC_RUNNING
+struct cadence_codec_param {
+	uint32_t id;
+	uint32_t size;
+	int32_t data[];
 };
 
 struct cadence_codec_data {
-	enum cadence_codec_state state;
 	char name[LIB_NAME_MAX_LEN];
 	void *self;
 	void *mem_tabs;
 };
 
-
 int cadence_codec_init(struct comp_dev *dev);
+int cadence_codec_prepare(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CADENCE_CODEC__ */

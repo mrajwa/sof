@@ -107,12 +107,41 @@ int codec_init(struct comp_dev *dev)
 	/* Now we can proceed with codec specific initialization */
 	ret = codec->call->init(dev);
 	if (ret) {
-		comp_err(dev, "codec_init() error %x: codec specific init failed, codec_id %x",
+		comp_err(dev, "codec_init() error %d: codec specific init failed, codec_id %x",
 			 ret, codec_id);
 		goto out;
 	}
 
 	comp_info(dev, "codec_init() done");
+	codec->state = CODEC_INITIALIZED;
+out:
+	return ret;
+}
+
+int codec_prepare(struct comp_dev *dev)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint32_t codec_id = cd->ca_config.codec_id;
+	struct codec_data *codec = &cd->codec;
+
+	comp_info(dev, "codec_prepare() start");
+
+	if (cd->codec.state != CODEC_INITIALIZED) {
+		comp_err(dev, "codec_prepare() error: wrong state of codec %d",
+			 cd->codec.state);
+		return -EPERM;
+	}
+
+	ret = codec->call->prepare(dev);
+	if (ret) {
+		comp_err(dev, "codec_prepare() error %d: codec specific prepare failed, codec_id %x",
+			 ret, codec_id);
+		goto out;
+	}
+
+	comp_info(dev, "codec_prepare() done");
+	codec->state = CODEC_PREPARED;
 out:
 	return ret;
 }

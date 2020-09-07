@@ -143,6 +143,54 @@ static int codec_adapter_verify_params(struct comp_dev *dev,
 	return 0;
 }
 
+static int codec_adapter_prepare(struct comp_dev *dev)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_info(dev, "codec_adapter_prepare() start");
+
+	/* Init sink & source buffers */
+	cd->ca_sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+				      source_list);
+        cd->ca_source = list_first_item(&dev->bsource_list, struct comp_buffer,
+                                        sink_list);
+
+        if (!cd->ca_source) {
+                comp_err(dev, "codec_adapter_prepare() erro: source buffer not found");
+                return -EINVAL;
+        } else if (!cd->ca_sink) {
+                comp_err(dev, "codec_adapter_prepare() erro: sink buffer not found");
+                return -EINVAL;
+        }
+
+	/* Are we already prepared? */
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+	if (cd->codec.state >= CODEC_PREPARED)
+		;//TODO: perform codec reset
+
+	/* Prepare codec */
+	ret = codec_prepare(dev);
+	if (ret) {
+		comp_err(dev, "codec_adapter_prepare() error %x: codec prepare failed",
+			 ret);
+
+		return -EIO;
+	} else {
+		comp_dbg(dev, "codec_adapter_prepare() codec prepared successfully");
+	}
+
+	comp_info(dev, "codec_adapter_prepare() done");
+        cd->state = PP_STATE_PREPARED;
+
+	return 0;
+}
+
 static int codec_adapter_params(struct comp_dev *dev,
 				    struct sof_ipc_stream_params *params)
 {
@@ -206,6 +254,7 @@ static const struct comp_driver comp_codec_adapter = {
 	.ops = {
 		.create = codec_adapter_new,
 		.params = codec_adapter_params,
+		.prepare = codec_adapter_prepare,
 		.free = codec_adapter_free,
 		.trigger = codec_adapter_trigger,
 		.reset = codec_adapter_reset,
