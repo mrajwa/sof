@@ -235,7 +235,7 @@ int cadence_codec_prepare(struct comp_dev *dev)
 			goto err;
 		}
 	}
-	if (codec->r_cfg.avail) {
+	if (codec->r_cfg.avail && 0) {
 		ret = apply_config(dev, CODEC_CFG_RUNTIME);
 		if (ret) {
 			comp_err(dev, "cadence_codec_prepare() error %x: failed to applay runtime config",

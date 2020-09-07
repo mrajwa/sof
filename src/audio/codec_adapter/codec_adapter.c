@@ -247,6 +247,7 @@ static void codec_adapter_copy_to_lib(const struct audio_stream *source,
 			j++;
 		}
 	}
+
 }
 
 static void codec_adapter_copy_from_lib_to_sink(void *source, struct audio_stream *sink,
@@ -261,6 +262,7 @@ static void codec_adapter_copy_from_lib_to_sink(void *source, struct audio_strea
 			  16 : 32;
 	size_t channels = sink->channels;
 	size_t frames = size / (sample_width / 8 * channels);
+
 
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < channels; channel++) {
@@ -287,7 +289,9 @@ static void codec_adapter_copy_from_lib_to_sink(void *source, struct audio_strea
 			j++;
 		}
 	}
+
 }
+
 static int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
@@ -300,7 +304,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 
 
         bytes_to_process = MIN(sink->stream.free, source->stream.avail);
-	copy_bytes = MIN(bytes_to_process, lib_buff_size);
+	copy_bytes = MIN(sink->stream.free, source->stream.avail);
 
         comp_info(dev, "codec_adapter_copy() start lib_buff_size: %d, copy_bytes: %d",
         	  lib_buff_size, copy_bytes);

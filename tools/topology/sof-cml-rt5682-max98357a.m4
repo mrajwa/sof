@@ -23,7 +23,7 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 PIPELINE_PCM_ADD(sof/pipe-processing-playback.m4,
-	7, 5, 2, s32le,
+	7, 5, 2, s16le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -39,7 +39,7 @@ dnl     deadline, priority, core, time_domain)
 
 DAI_ADD(sof/pipe-dai-playback.m4,
         7, SSP, SSP1_INDEX, SSP1_NAME,
-        PIPELINE_SOURCE_7, 2, SSP1_VALID_BITS_STR,
+        PIPELINE_SOURCE_7, 2, s16le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # PCM Low Latency, id 0
@@ -57,7 +57,7 @@ DAI_CONFIG(SSP, SSP1_INDEX, 6, SSP1_NAME,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP1_MCLK_RATE, codec_mclk_in),
                 SSP_CLOCK(bclk, SSP1_BCLK, codec_slave),
                 SSP_CLOCK(fsync, SSP1_FSYNC, codec_slave),
-                SSP_TDM(2, SSP1_VALID_BITS, 3, 3),
-                SSP_CONFIG_DATA(SSP, SSP1_INDEX, SSP1_VALID_BITS)))
+                SSP_TDM(2, 16, 3, 3),
+                SSP_CONFIG_DATA(SSP, SSP1_INDEX, 16)))
 
 DEBUG_END
