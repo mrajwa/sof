@@ -89,7 +89,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	bs = ipc_codec_adapter->size;
 	if (bs) {
 		if (bs < sizeof(struct ca_config)) {
-			comp_info(dev, "generic_processor_new() error: wrong size of setup config");
+			comp_info(dev, "codec_adapter_new() error: wrong size of setup config");
 			goto err;
 		}
 		ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cfg,
@@ -113,7 +113,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 			comp_dbg(dev, "codec_adapter_new() codec config loaded successfully");
 		}
 	} else {
-		comp_err(dev, "generic_processor_new(): no configuration available");
+		comp_err(dev, "codec_adapter_new(): no configuration available");
 		goto err;
 	}
 
@@ -134,7 +134,7 @@ err:
 	return NULL;
 }
 
-static int generic_processor_verify_params(struct comp_dev *dev,
+static int codec_adapter_verify_params(struct comp_dev *dev,
 			     	struct sof_ipc_stream_params *params)
 {
 	/* TODO check on GP level. Params to codec shall me sent
@@ -143,24 +143,60 @@ static int generic_processor_verify_params(struct comp_dev *dev,
 	return 0;
 }
 
-static int generic_processor_params(struct comp_dev *dev,
+static int codec_adapter_params(struct comp_dev *dev,
 				    struct sof_ipc_stream_params *params)
 {
 	int ret = 0;
 
 	if (dev->state == COMP_STATE_PREPARE) {
-		comp_warn(dev, "generic_processor_params(): params has already been prepared.");
+		comp_warn(dev, "codec_adapter_params(): params has already been prepared.");
 		goto end;
 	}
 
-	ret = generic_processor_verify_params(dev, params);
+	ret = codec_adapter_verify_params(dev, params);
 	if (ret < 0) {
-		comp_err(dev, "generic_processor_params(): pcm params verification failed");
+		comp_err(dev, "codec_adapter_params(): pcm params verification failed");
 		goto end;
 	}
 
 end:
 	return ret;
+}
+
+static void codec_adapter_free(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): start");
+
+	rfree(cd);
+	rfree(dev);
+	//TODO: call lib API to free its resources
+
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): component memory freed");
+
+}
+
+static int codec_adapter_trigger(struct comp_dev *dev, int cmd)
+{
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_trigger(): component got trigger cmd %x",
+		     cmd);
+
+	//TODO: ask lib if pp parameters has been aplied and if not log it!
+        //likely here change detect COMP_TRIGGER_START cmd and change state to PP_STATE_RUN
+	return comp_set_state(dev, cmd);
+}
+
+static int codec_adapter_reset(struct comp_dev *dev)
+{
+        struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): resetting");
+
+        cd->state = PP_STATE_CREATED;
+        //TODO: reset codec params
+
+	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
 static const struct comp_driver comp_codec_adapter = {
@@ -169,7 +205,10 @@ static const struct comp_driver comp_codec_adapter = {
 	.tctx = &ca_tr,
 	.ops = {
 		.create = codec_adapter_new,
-		.params = generic_processor_params,
+		.params = codec_adapter_params,
+		.free = codec_adapter_free,
+		.trigger = codec_adapter_trigger,
+		.reset = codec_adapter_reset,
 	},
 };
 
