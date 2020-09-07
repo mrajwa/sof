@@ -107,7 +107,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		ret = codec_load_config(dev, lib_cfg, lib_cfg_size,
 					CODEC_CFG_SETUP);
 		if (ret) {
-			comp_err(dev, "codec_adapter_new(): error %x: failed to load setup config for codec",
+			comp_err(dev, "codec_adapter_new(): error %d: failed to load setup config for codec",
 				 ret);
 		} else {
 			comp_dbg(dev, "codec_adapter_new() codec config loaded successfully");
@@ -120,7 +120,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	/* Init processing codec */
 	ret = codec_init(dev);
 	if (ret) {
-		comp_err(dev, "codec_adapter_new() error %x: codec initialization failed",
+		comp_err(dev, "codec_adapter_new() error %d: codec initialization failed",
 			 ret);
 		goto err;
 	}
