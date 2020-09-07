@@ -211,6 +211,148 @@ end:
 	return ret;
 }
 
+static void codec_adapter_copy_to_lib(const struct audio_stream *source,
+			      void *lib_buff, size_t size)
+{
+	void *src;
+	void *dst = lib_buff;
+	size_t i;
+	size_t j = 0;
+	size_t channel;
+	size_t channels = source->channels;
+	size_t sample_width = source->frame_fmt == SOF_IPC_FRAME_S16_LE ?
+			  16 : 32;
+	size_t frames = size / (sample_width / 8 * channels);
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < channels; channel++) {
+			switch (sample_width) {
+			case 16:
+				src = audio_stream_read_frag_s16(source, j);
+				*((int16_t *)dst) = *((int16_t *)src);
+				dst = ((int16_t *)dst) + 1;
+				break;
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+			case 24:
+			case 32:
+				src = audio_stream_read_frag_s32(source, j);
+				*((int32_t *)dst) = *((int32_t *)src);
+				dst = ((int32_t *)dst) + 1;
+				break;
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE*/
+			default:
+				comp_cl_info(&comp_codec_adapter, "codec_adapter_copy_to_lib(): An attempt to copy not supported format!");
+				return;
+			}
+			j++;
+		}
+	}
+}
+
+static void codec_adapter_copy_from_lib_to_sink(void *source, struct audio_stream *sink,
+			      size_t size)
+{
+	void *dst;
+	void *src = source;
+	size_t i;
+	size_t j = 0;
+	size_t channel;
+	size_t sample_width = sink->frame_fmt == SOF_IPC_FRAME_S16_LE ?
+			  16 : 32;
+	size_t channels = sink->channels;
+	size_t frames = size / (sample_width / 8 * channels);
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < channels; channel++) {
+			switch (sample_width) {
+#if CONFIG_FORMAT_S16LE
+			case 16:
+				dst = audio_stream_write_frag_s16(sink, j);
+				*((int16_t *)dst) = *((int16_t *)src);
+				src = ((int16_t *)src) + 1;
+				break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+			case 24:
+			case 32:
+				dst = audio_stream_write_frag_s32(sink, j);
+				*((int32_t *)dst) = *((int32_t *)src);
+				src = ((int32_t *)src) + 1;
+				break;
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
+			default:
+				comp_cl_info(&comp_codec_adapter, "generic_processor_copy_to_lib(): An attempt to copy not supported format!");
+				return;
+			}
+			j++;
+		}
+	}
+}
+static int codec_adapter_copy(struct comp_dev *dev)
+{
+	int ret = 0;
+	uint32_t copy_bytes, bytes_to_process, processed = 0;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_data *codec = &cd->codec;
+	struct comp_buffer *source = cd->ca_source;
+	struct comp_buffer *sink = cd->ca_sink;
+        uint32_t lib_buff_size = codec->cpd.in_buff_size;
+
+
+        bytes_to_process = MIN(sink->stream.free, source->stream.avail);
+	copy_bytes = MIN(bytes_to_process, lib_buff_size);
+
+        comp_info(dev, "codec_adapter_copy() start lib_buff_size: %d, copy_bytes: %d",
+        	  lib_buff_size, copy_bytes);
+
+	while (bytes_to_process) {
+		if (bytes_to_process < lib_buff_size) {
+			comp_info(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
+			        processed, bytes_to_process);
+			break;
+		}
+
+		/* Fill lib buffer completely. NOTE! If you don't fill whole buffer
+		 * the lib won't process it.
+		 */
+		codec_adapter_copy_to_lib(&source->stream,
+					  codec->cpd.in_buff,
+					  lib_buff_size);
+		codec->cpd.avail = lib_buff_size;
+		ret = codec_process(dev);
+		if (ret) {
+			comp_err(dev, "codec_adapter_copy() error %x: lib processing failed",
+				 ret);
+			break;
+		} else if (codec->cpd.produced == 0) {
+			/* skipping as lib has not produced anything */
+                        comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
+                                 ret);
+			break;
+		}
+
+                codec_adapter_copy_from_lib_to_sink(codec->cpd.out_buff,
+                				    &sink->stream, codec->cpd.produced);
+
+		bytes_to_process -= codec->cpd.produced;
+		processed += codec->cpd.produced;
+	}
+
+	if (!processed) {
+		comp_err(dev, "codec_adapter_copy() error: failed to process anything in this call!");
+		goto end;
+	} else {
+		comp_info(dev, "codec_adapter_copy: codec processed %d bytes", processed);
+	}
+
+
+	comp_update_buffer_produce(sink, processed);
+	comp_update_buffer_consume(source, processed);
+end:
+        comp_info(dev, "codec_adapter_copy() end processed: %d", processed);
+	return ret;
+}
+
 static void codec_adapter_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -255,6 +397,7 @@ static const struct comp_driver comp_codec_adapter = {
 		.create = codec_adapter_new,
 		.params = codec_adapter_params,
 		.prepare = codec_adapter_prepare,
+		.copy = codec_adapter_copy,
 		.free = codec_adapter_free,
 		.trigger = codec_adapter_trigger,
 		.reset = codec_adapter_reset,

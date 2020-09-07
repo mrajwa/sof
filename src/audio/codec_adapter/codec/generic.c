@@ -125,7 +125,7 @@ int codec_prepare(struct comp_dev *dev)
 	uint32_t codec_id = cd->ca_config.codec_id;
 	struct codec_data *codec = &cd->codec;
 
-	comp_info(dev, "codec_prepare() start");
+	comp_dbg(dev, "codec_prepare() start");
 
 	if (cd->codec.state != CODEC_INITIALIZED) {
 		comp_err(dev, "codec_prepare() error: wrong state of codec %d",
@@ -140,8 +140,35 @@ int codec_prepare(struct comp_dev *dev)
 		goto out;
 	}
 
-	comp_info(dev, "codec_prepare() done");
+	comp_dbg(dev, "codec_prepare() done");
 	codec->state = CODEC_PREPARED;
+out:
+	return ret;
+}
+
+int codec_process(struct comp_dev *dev)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint32_t codec_id = cd->ca_config.codec_id;
+	struct codec_data *codec = &cd->codec;
+
+	comp_dbg(dev, "codec_process() start");
+
+	if (cd->codec.state < CODEC_PREPARED) {
+		comp_err(dev, "codec_prepare() error: wrong state of codec %x, state %d",
+			 cd->ca_config.codec_id, codec->state);
+		return -EPERM;
+	}
+
+	ret = codec->call->process(dev);
+	if (ret) {
+		comp_err(dev, "codec_prepare() error %d: codec process failed for codec_id %x",
+			 ret, codec_id);
+		goto out;
+	}
+
+	comp_dbg(dev, "codec_process() end");
 out:
 	return ret;
 }
