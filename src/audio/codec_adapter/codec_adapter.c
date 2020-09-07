@@ -142,3 +142,15 @@ static const struct comp_driver comp_codec_adapter = {
 		.create = codec_adapter_new,
 	},
 };
+
+static SHARED_DATA struct comp_driver_info comp_codec_adapter_info = {
+	.drv = &comp_codec_adapter,
+};
+
+UT_STATIC void sys_comp_codec_adapter_init(void)
+{
+	comp_register(platform_shared_get(&comp_codec_adapter_info,
+					  sizeof(comp_codec_adapter_info)));
+}
+
+DECLARE_MODULE(sys_comp_codec_adapter_init);
