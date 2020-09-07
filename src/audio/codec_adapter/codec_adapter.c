@@ -134,12 +134,42 @@ err:
 	return NULL;
 }
 
+static int generic_processor_verify_params(struct comp_dev *dev,
+			     	struct sof_ipc_stream_params *params)
+{
+	/* TODO check on GP level. Params to codec shall me sent
+	 * in dedicated binary_set ipc
+	 */
+	return 0;
+}
+
+static int generic_processor_params(struct comp_dev *dev,
+				    struct sof_ipc_stream_params *params)
+{
+	int ret = 0;
+
+	if (dev->state == COMP_STATE_PREPARE) {
+		comp_warn(dev, "generic_processor_params(): params has already been prepared.");
+		goto end;
+	}
+
+	ret = generic_processor_verify_params(dev, params);
+	if (ret < 0) {
+		comp_err(dev, "generic_processor_params(): pcm params verification failed");
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
 static const struct comp_driver comp_codec_adapter = {
 	.type = SOF_COMP_NONE,
 	.uid = SOF_RT_UUID(ca_uuid),
 	.tctx = &ca_tr,
 	.ops = {
 		.create = codec_adapter_new,
+		.params = generic_processor_params,
 	},
 };
 
