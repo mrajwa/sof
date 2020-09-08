@@ -65,8 +65,6 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	struct codec_config *cfg;
 	void *data;
 	struct cadence_codec_param *param;
-	int *debug = (void *)0x9e008000;
-	static int i;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
@@ -76,37 +74,37 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 					  &codec->r_cfg;
 	data = cfg->data;
 
-	*(debug+i++) = 0xFEED0;
+
 
 	if (!cfg->avail) {
 		comp_err(dev, "apply_config() error: no config available, requested conf. type %d",
 			 type);
 		ret = -EIO;
-		*(debug+i++) = ret;
+
 		goto ret;
 	}
 
 	size = cfg->size;
-	*(debug+i++) = 0xFEED1;
+
 	while (size > 0) {
 		param = data;
-		*(debug+i++) = 0xFEED2;
-		*(debug+i++) = param->id;
-		*(debug+i++) = param->data[0];
+
+
+
 		comp_dbg(dev, "apply_config() applying param %d value %d",
 			 param->id, param->data[0]);
 		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, param->id,
 			 param->data, ret);
 		if (ret != LIB_NO_ERROR) {
-			comp_err(dev, "apply_config() error %x: failed to applay parameter %d",
-				 ret, param->id);
-			*(debug+i++) = -1;
-			*(debug+i++) = ret;
+			comp_err(dev, "apply_config() error %x: failed to applay parameter %d value %d",
+				 ret, param->id, *(int32_t *)param->data);
+
+
 			goto ret;
 		}
 		data = (char *)data + param->size;
 		size -= param->size;
-		*(debug+i++) = size;
+
 	}
 
 	comp_dbg(dev, "apply_config() done");

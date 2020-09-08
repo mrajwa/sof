@@ -307,12 +307,12 @@ static int codec_adapter_copy(struct comp_dev *dev)
         bytes_to_process = MIN(sink->stream.free, source->stream.avail);
 	copy_bytes = MIN(sink->stream.free, source->stream.avail);
 
-        comp_info(dev, "codec_adapter_copy() start lib_buff_size: %d, copy_bytes: %d",
+        comp_dbg(dev, "codec_adapter_copy() start lib_buff_size: %d, copy_bytes: %d",
         	  lib_buff_size, copy_bytes);
 
 	while (bytes_to_process) {
 		if (bytes_to_process < lib_buff_size) {
-			comp_info(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
+			comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
 			        processed, bytes_to_process);
 			break;
 		}
@@ -331,7 +331,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 			break;
 		} else if (codec->cpd.produced == 0) {
 			/* skipping as lib has not produced anything */
-                        comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
+                        comp_dbg(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
                                  ret);
 			break;
 		}
@@ -344,17 +344,17 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	}
 
 	if (!processed) {
-		comp_err(dev, "codec_adapter_copy() error: failed to process anything in this call!");
+		comp_dbg(dev, "codec_adapter_copy() error: failed to process anything in this call!");
 		goto end;
 	} else {
-		comp_info(dev, "codec_adapter_copy: codec processed %d bytes", processed);
+		comp_dbg(dev, "codec_adapter_copy: codec processed %d bytes", processed);
 	}
 
 
 	comp_update_buffer_produce(sink, processed);
 	comp_update_buffer_consume(source, processed);
 end:
-        comp_info(dev, "codec_adapter_copy() end processed: %d", processed);
+        comp_dbg(dev, "codec_adapter_copy() end processed: %d", processed);
 	return ret;
 }
 
@@ -402,12 +402,18 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 	static uint32_t size;
 	uint32_t offset;
         struct comp_data *cd = comp_get_drvdata(dev);
+        int *debug = (void *)0x9e008000;
+        static int i;
 
+        *debug = 0xFEED;
+        *(debug+i++) = type;
+        *(debug+i++) = cdata->num_elems;
 	/* Stage 1 load whole config locally */
 	/* Check that there is no work-in-progress previous request */
 	if (cd->runtime_params && cdata->msg_index == 0) {
 		comp_err(dev, "ca_set_runtime_params() error: busy with previous request");
-		return -EBUSY;
+		ret = -EINVAL;
+		goto end;
 	}
 
 	comp_info(dev, "ca_set_runtime_params(): num_of_elem %d, elem remain %d msg_index %u",
@@ -473,6 +479,7 @@ end:
 	if (cd->runtime_params)
 		rfree(cd->runtime_params);
 	cd->runtime_params = NULL;
+	*(debug+i++) = ret;
 	return ret;
 }
 
