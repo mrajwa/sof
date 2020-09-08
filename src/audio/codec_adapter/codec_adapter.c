@@ -293,6 +293,14 @@ static void codec_adapter_copy_from_lib_to_sink(void *source, struct audio_strea
 
 }
 
+static inline int read_prid(void)
+{
+	int reg = -1;
+    __asm__ __volatile__("rsr.prid %0\n\t"
+            : : "a" (reg));
+    return reg;
+}
+
 static int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
@@ -309,6 +317,9 @@ static int codec_adapter_copy(struct comp_dev *dev)
 
         comp_dbg(dev, "codec_adapter_copy() start lib_buff_size: %d, copy_bytes: %d",
         	  lib_buff_size, copy_bytes);
+
+        comp_info(dev, "RAJWA: codec_adapter_copy() start. Core %d",
+        	read_prid());
 
 	while (bytes_to_process) {
 		if (bytes_to_process < lib_buff_size) {
