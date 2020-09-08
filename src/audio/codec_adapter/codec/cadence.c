@@ -78,7 +78,7 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 
 	*(debug+i++) = 0xFEED0;
 
-	if (!cfg->avail && 0) {
+	if (!cfg->avail) {
 		comp_err(dev, "apply_config() error: no config available, requested conf. type %d",
 			 type);
 		ret = -EIO;
@@ -112,8 +112,11 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	comp_dbg(dev, "apply_config() done");
 
 ret:
+	//rfree(cfg->data);
+	//cfg->size = 0;
 	cfg->avail = false;
 	return ret;
+
 }
 
 static inline void *allocate_codec_memory(size_t size, size_t alignment) {
@@ -228,22 +231,22 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	}
 
 	if (!codec->s_cfg.avail && !codec->s_cfg.size) {
-		comp_err(dev, "cadence_codec_prepare() error %x: no setup config available!",
-			       ret);
+		comp_err(dev, "cadence_codec_prepare() error %x: no setup configuration available!",
+			 ret);
 		ret = -EIO;
 		goto err;
 	} else if (!codec->s_cfg.avail) {
-		comp_err(dev, "cadence_codec_prepare() error %x: no new setup config available, using the old one",
-			       ret);
-	}
+		comp_warn(dev, "cadence_codec_prepare() error %x: no new setup configuration available, using the old one",
+			 ret);
+		codec->s_cfg.avail = true;
 
+	}
 	ret = apply_config(dev, CODEC_CFG_SETUP);
 	if (ret) {
 		comp_err(dev, "cadence_codec_prepare() error %x: failed to applay setup config",
 			 ret);
 		goto err;
 	}
-
 	if (codec->r_cfg.avail) {
 		ret = apply_config(dev, CODEC_CFG_RUNTIME);
 		if (ret) {
@@ -349,4 +352,13 @@ int cadence_codec_process(struct comp_dev *dev)
 err:
 	return ret;
 
+}
+
+
+int cadence_codec_apply_config(struct comp_dev *dev) {
+	int ret;
+
+	ret = apply_config(dev, CODEC_CFG_RUNTIME);
+
+	return ret;
 }

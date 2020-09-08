@@ -176,9 +176,6 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* Prepare codec */
-	cd->codec.stream_dsc.rate = cd->ca_source->stream.rate;
-	cd->codec.stream_dsc.frame_fmt = cd->ca_source->stream.frame_fmt;
-	cd->codec.stream_dsc.channels = cd->ca_source->stream.channels;
 	ret = codec_prepare(dev);
 	if (ret) {
 		comp_err(dev, "codec_adapter_prepare() error %x: codec prepare failed",
@@ -287,7 +284,7 @@ static void codec_adapter_copy_from_lib_to_sink(void *source, struct audio_strea
 				break;
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 			default:
-				comp_cl_info(&comp_codec_adapter, "generic_processor_copy_to_lib(): An attempt to copy not supported format!");
+				comp_cl_info(&comp_codec_adapter, "codec_adapter_copy_to_lib(): An attempt to copy not supported format!");
 				return;
 			}
 			j++;
@@ -397,6 +394,160 @@ static int codec_adapter_reset(struct comp_dev *dev)
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
+static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
+			 enum codec_cfg_type type)
+{
+	int ret;
+	char *dst, *src;
+	static uint32_t size;
+	uint32_t offset;
+        struct comp_data *cd = comp_get_drvdata(dev);
+
+	/* Stage 1 load whole config locally */
+	/* Check that there is no work-in-progress previous request */
+	if (cd->runtime_params && cdata->msg_index == 0) {
+		comp_err(dev, "ca_set_runtime_params() error: busy with previous request");
+		return -EBUSY;
+	}
+
+	comp_info(dev, "ca_set_runtime_params(): num_of_elem %d, elem remain %d msg_index %u",
+		  cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
+
+	if (cdata->num_elems + cdata->elems_remaining > MAX_BLOB_SIZE)
+	{
+		comp_err(dev, "ca_set_runtime_params() error: blob size is too big!");
+		ret = -EINVAL;
+		goto end;
+	}
+
+	if (cdata->msg_index == 0) {
+		/* Allocate buffer for new params */
+		size = cdata->num_elems + cdata->elems_remaining;
+		cd->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
+
+		if (!cd->runtime_params) {
+			comp_err(dev, "ca_set_runtime_params(): space allocation for new params failed");
+			ret = -ENOMEM;
+			goto end;
+		}
+		memset(cd->runtime_params, 0, size);
+	}
+
+	offset = size - (cdata->num_elems + cdata->elems_remaining);
+	dst = (char *)cd->runtime_params + offset;
+	src = (char *)cdata->data->data;
+
+	ret = memcpy_s(dst,
+		       size - offset,
+		       src, cdata->num_elems);
+
+	assert(!ret);
+
+	if (cdata->elems_remaining == 0) {
+		/* Config has been copied now we can load & apply it
+		 * depending on lib status.
+		 */
+		ret = codec_load_config(dev, cd->runtime_params, size,
+					type);
+		if (ret) {
+			comp_err(dev, "ca_set_runtime_params() error %x: lib params load failed",
+				 ret);
+			goto end;
+        	}
+		if (cd->state >= PP_STATE_PREPARED && type == CODEC_CFG_RUNTIME) {
+			/* Post processing is already prepared so we can apply runtime
+			 * config right away.
+			 */
+			ret = codec_apply_runtime_config(dev);
+			if (ret) {
+				comp_err(dev, "codec_adapter_ctrl_set_data() error %x: lib config apply failed",
+					 ret);
+				goto end;
+			}
+		} else {
+			cd->codec.r_cfg.avail = true;
+		}
+	}
+
+end:
+	if (cd->runtime_params)
+		rfree(cd->runtime_params);
+	cd->runtime_params = NULL;
+	return ret;
+}
+
+static int ca_set_binary_data(struct comp_dev *dev,
+			      struct sof_ipc_ctrl_data *cdata) {
+	int ret;
+
+	 comp_info(dev, "ca_set_binary_data() start, data type %d",
+	 	   cdata->data->type);
+
+	switch (cdata->data->type) {
+		/* TODO: use enum hifi_codec_cfg_type here */
+	case CODEC_CFG_SETUP:
+	case CODEC_CFG_RUNTIME:
+		ret = ca_set_params(dev, cdata, cdata->data->type);
+		break;
+	default:
+		comp_err(dev, "ca_set_binary_data() error: unknown binary data type");
+		ret = -EIO;
+		break;
+	}
+
+	return ret;
+}
+
+static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
+                                      struct sof_ipc_ctrl_data *cdata) {
+	int ret;
+
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+        comp_info(dev, "codec_adapter_ctrl_set_data() start, state %d, cmd %d",
+        	  cd->state, cdata->cmd);
+
+	/* Check version from ABI header */
+	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
+		comp_err(dev, "codec_adapter_ctrl_set_data(): ABI mismatch");
+		return -EINVAL;
+	}
+
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_ENUM:
+		//TODO
+		ret = -EINVAL;
+		break;
+	case SOF_CTRL_CMD_BINARY:
+		ret = ca_set_binary_data(dev, cdata);
+		break;
+	default:
+		comp_err(dev, "codec_adapter_ctrl_set_data error: unknown set data command");
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
+/* Used to pass standard and bespoke commands (with data) to component */
+static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
+			    int max_data_size)
+{
+	struct sof_ipc_ctrl_data *cdata = data;
+
+	comp_info(dev, "codec_adapter_cmd() %d start", cmd);
+
+	switch (cmd) {
+	case COMP_CMD_SET_DATA:
+		return codec_adapter_ctrl_set_data(dev, cdata);
+	case COMP_CMD_GET_DATA:
+		//TODO
+		return -EINVAL;
+	default:
+		comp_err(dev, "codec_adapter_cmd() error: unknown command");
+		return -EINVAL;
+	}
+}
 static const struct comp_driver comp_codec_adapter = {
 	.type = SOF_COMP_NONE,
 	.uid = SOF_RT_UUID(ca_uuid),
@@ -409,6 +560,7 @@ static const struct comp_driver comp_codec_adapter = {
 		.free = codec_adapter_free,
 		.trigger = codec_adapter_trigger,
 		.reset = codec_adapter_reset,
+		.cmd = codec_adapter_cmd,
 	},
 };
 

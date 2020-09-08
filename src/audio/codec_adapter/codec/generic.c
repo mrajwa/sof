@@ -172,3 +172,29 @@ int codec_process(struct comp_dev *dev)
 out:
 	return ret;
 }
+
+int codec_apply_runtime_config(struct comp_dev *dev) {
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint32_t codec_id = cd->ca_config.codec_id;
+	struct codec_data *codec = &cd->codec;
+
+	comp_dbg(dev, "codec_apply_config() start");
+
+	if (cd->codec.state < CODEC_PREPARED) {
+		comp_err(dev, "codec_prepare() error: wrong state of codec %x, state %d",
+			 cd->ca_config.codec_id, codec->state);
+		return -EPERM;
+	}
+
+	ret = codec->call->apply_config(dev);
+	if (ret) {
+		comp_err(dev, "codec_apply_config() error %d: codec process failed for codec_id %x",
+			 ret, codec_id);
+		goto out;
+	}
+
+	comp_dbg(dev, "codec_apply_config() end");
+out:
+	return ret;
+}
