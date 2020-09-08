@@ -53,14 +53,6 @@ int cadence_codec_init(struct comp_dev *dev) {
 			 obj_size);
 	}
 
-	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
-		 NULL, ret);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_init(): error %x: failed to set default config",
-			 ret);
-		goto out;
-	}
-
 	comp_dbg(dev, "cadence_codec_init() done");
 out:
 	return ret;
@@ -71,6 +63,7 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	int ret;
 	int size;
 	struct codec_config *cfg;
+	void *data;
 	struct cadence_codec_param *param;
 	int *debug = (void *)0x9e008000;
 	static int i;
@@ -81,10 +74,11 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 
 	cfg = (type == CODEC_CFG_SETUP) ? &codec->s_cfg :
 					  &codec->r_cfg;
+	data = cfg->data;
 
 	*(debug+i++) = 0xFEED0;
 
-	if (!cfg->avail) {
+	if (!cfg->avail && 0) {
 		comp_err(dev, "apply_config() error: no config available, requested conf. type %d",
 			 type);
 		ret = -EIO;
@@ -95,7 +89,7 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	size = cfg->size;
 	*(debug+i++) = 0xFEED1;
 	while (size > 0) {
-		param = cfg->data;
+		param = data;
 		*(debug+i++) = 0xFEED2;
 		*(debug+i++) = param->id;
 		*(debug+i++) = param->data[0];
@@ -110,7 +104,7 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 			*(debug+i++) = ret;
 			goto ret;
 		}
-		cfg->data = (char *)cfg->data + param->size;
+		data = (char *)data + param->size;
 		size -= param->size;
 		*(debug+i++) = size;
 	}
@@ -118,8 +112,6 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	comp_dbg(dev, "apply_config() done");
 
 ret:
-	rfree(cfg->data);
-	cfg->size = 0;
 	cfg->avail = false;
 	return ret;
 }
@@ -227,15 +219,32 @@ int cadence_codec_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "cadence_codec_prepare() start");
 
-	if (codec->s_cfg.avail) {
-		ret = apply_config(dev, CODEC_CFG_SETUP);
-		if (ret) {
-			comp_err(dev, "cadence_codec_prepare() error %x: failed to applay setup config",
-				 ret);
-			goto err;
-		}
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
+		 NULL, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_init(): error %x: failed to set default config",
+			 ret);
+		goto err;
 	}
-	if (codec->r_cfg.avail && 0) {
+
+	if (!codec->s_cfg.avail && !codec->s_cfg.size) {
+		comp_err(dev, "cadence_codec_prepare() error %x: no setup config available!",
+			       ret);
+		ret = -EIO;
+		goto err;
+	} else if (!codec->s_cfg.avail) {
+		comp_err(dev, "cadence_codec_prepare() error %x: no new setup config available, using the old one",
+			       ret);
+	}
+
+	ret = apply_config(dev, CODEC_CFG_SETUP);
+	if (ret) {
+		comp_err(dev, "cadence_codec_prepare() error %x: failed to applay setup config",
+			 ret);
+		goto err;
+	}
+
+	if (codec->r_cfg.avail) {
 		ret = apply_config(dev, CODEC_CFG_RUNTIME);
 		if (ret) {
 			comp_err(dev, "cadence_codec_prepare() error %x: failed to applay runtime config",

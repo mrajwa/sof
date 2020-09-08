@@ -169,12 +169,16 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	if (ret < 0)
 		return ret;
 
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+	if (ret == COMP_STATUS_STATE_ALREADY_SET) {
+		comp_err(dev, "codec_adapter_prepare() error %x: codec_adapter has already been prepared",
+			 ret);
 		return 0;
-	if (cd->codec.state >= CODEC_PREPARED)
-		return 0; //TODO: reset codec here and start over
+	}
 
 	/* Prepare codec */
+	cd->codec.stream_dsc.rate = cd->ca_source->stream.rate;
+	cd->codec.stream_dsc.frame_fmt = cd->ca_source->stream.frame_fmt;
+	cd->codec.stream_dsc.channels = cd->ca_source->stream.channels;
 	ret = codec_prepare(dev);
 	if (ret) {
 		comp_err(dev, "codec_adapter_prepare() error %x: codec prepare failed",

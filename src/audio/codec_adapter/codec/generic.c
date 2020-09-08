@@ -127,7 +127,7 @@ int codec_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_prepare() start");
 
-	if (cd->codec.state != CODEC_INITIALIZED) {
+	if (cd->codec.state != CODEC_INITIALIZED && 0) {
 		comp_err(dev, "codec_prepare() error: wrong state of codec %d",
 			 cd->codec.state);
 		return -EPERM;

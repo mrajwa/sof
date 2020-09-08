@@ -53,6 +53,12 @@ struct codec_processing_data {
 	void *out_buff;
 };
 
+struct ca_stream_descriptor {
+	uint32_t rate;
+	uint32_t frame_fmt;
+	uint32_t channels;
+};
+
 struct codec_data {
 	enum codec_state state;
 	char *name;
@@ -62,6 +68,7 @@ struct codec_data {
 	struct codec_config r_cfg; /**< runtime config */
 	struct codec_processing_data cpd; /**< shared data comp <-> codec */
 	struct codec_interface *call;
+	struct ca_stream_descriptor stream_dsc;
 };
 
 enum ca_state {
