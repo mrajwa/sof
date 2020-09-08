@@ -22,8 +22,9 @@ dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
+
 PIPELINE_PCM_ADD(sof/pipe-processing-playback.m4,
-	7, 5, 2, s16le,
+	7, 6, 2, s16le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -36,7 +37,6 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
-
 DAI_ADD(sof/pipe-dai-playback.m4,
         7, SSP, SSP1_INDEX, SSP1_NAME,
         PIPELINE_SOURCE_7, 2, s16le,
@@ -44,7 +44,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(Speakers, 5, PIPELINE_PCM_7)
+PCM_PLAYBACK_ADD(Speakers with PP, 5, PIPELINE_PCM_7)
 
 #
 # BE configurations for Speakers - overrides config in ACPI if present
