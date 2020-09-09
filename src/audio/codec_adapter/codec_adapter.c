@@ -293,14 +293,6 @@ static void codec_adapter_copy_from_lib_to_sink(void *source, struct audio_strea
 
 }
 
-static inline int read_prid(void)
-{
-	int reg = -1;
-    __asm__ __volatile__("rsr.prid %0\n\t"
-            : : "a" (reg));
-    return reg;
-}
-
 static int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
@@ -310,20 +302,23 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	struct comp_buffer *source = cd->ca_source;
 	struct comp_buffer *sink = cd->ca_sink;
         uint32_t lib_buff_size = codec->cpd.in_buff_size;
+	uintptr_t prid;
+
+	__asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
 
 
         bytes_to_process = MIN(sink->stream.free, source->stream.avail);
 	copy_bytes = MIN(sink->stream.free, source->stream.avail);
 
-        comp_dbg(dev, "codec_adapter_copy() start lib_buff_size: %d, copy_bytes: %d",
-        	  lib_buff_size, copy_bytes);
+        comp_info(dev, "codec_adapter_copy() start lib_buff_size: %d, sink free: %d source avail %d copy_bytes %d",
+        	  lib_buff_size, sink->stream.free, source->stream.avail, copy_bytes);
 
         comp_info(dev, "RAJWA: codec_adapter_copy() start. Core %d",
-        	read_prid());
+        	  prid);
 
 	while (bytes_to_process) {
 		if (bytes_to_process < lib_buff_size) {
-			comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
+			comp_info(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
 			        processed, bytes_to_process);
 			break;
 		}
@@ -342,7 +337,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 			break;
 		} else if (codec->cpd.produced == 0) {
 			/* skipping as lib has not produced anything */
-                        comp_dbg(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
+                        comp_info(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
                                  ret);
 			break;
 		}
@@ -355,17 +350,17 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	}
 
 	if (!processed) {
-		comp_dbg(dev, "codec_adapter_copy() error: failed to process anything in this call!");
+		comp_info(dev, "codec_adapter_copy() error: failed to process anything in this call!");
 		goto end;
 	} else {
-		comp_dbg(dev, "codec_adapter_copy: codec processed %d bytes", processed);
+		comp_info(dev, "codec_adapter_copy: codec processed %d bytes", processed);
 	}
 
 
 	comp_update_buffer_produce(sink, processed);
 	comp_update_buffer_consume(source, processed);
 end:
-        comp_dbg(dev, "codec_adapter_copy() end processed: %d", processed);
+        comp_info(dev, "codec_adapter_copy() end processed: %d", processed);
 	return ret;
 }
 
