@@ -73,7 +73,7 @@ C_CONTROLBYTES(Post Process Runtime Params, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, DAI_PERIODS, 0, 0)
 
 
-W_CODEC_ADAPTER(0, PIPELINE_FORMAT, 0, 2, 1, LIST(`             ', "Post Process Setup Config", "Post Process Runtime Params"))
+W_CODEC_ADAPTER(0, PIPELINE_FORMAT, 0, 2, 0, LIST(`             ', "Post Process Setup Config", "Post Process Runtime Params"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
