@@ -801,8 +801,9 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t samples;
 	int ret = 0;
 	uint32_t flags = 0;
+	//struct hda_chan_data *hda_chan = dma_chan_get_data(dd->chan);
 
-	comp_info(dev, "dai_copy()");
+	comp_info(dev, "RAJWA: dai_copy()");
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
@@ -838,8 +839,10 @@ static int dai_copy(struct comp_dev *dev)
 		 samples / buf->stream.channels);
 
 	/* return if it's not stream start */
-	if (!copy_bytes && dd->start_position != dev->position)
+	if (!copy_bytes && dd->start_position != dev->position) {
+		comp_err(dev, "RAJWA: NO BYTES TO COPY!!!");
 		return 0;
+	}
 
 	ret = dma_copy(dd->chan, copy_bytes, 0);
 	if (ret < 0) {
