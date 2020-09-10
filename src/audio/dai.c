@@ -114,12 +114,13 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	void *buffer_ptr;
 	int ret;
 
-	comp_dbg(dev, "dai_dma_cb()");
+	comp_info(dev, "RAJWA dai_dma_cb()");
 
 	next->status = DMA_CB_STATUS_RELOAD;
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
+	comp_info(dev, "RAJWA: xrun detected! dai_dma_cb()");
 		/* stop the DAI */
 		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->direction);
 
@@ -129,6 +130,8 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 
 	/* is our pipeline handling an XRUN ? */
 	if (dd->xrun) {
+		comp_info(dev, "RAJWA: xrun detected! Buffer will be zeroed dai_dma_cb()");
+
 		/* make sure we only playback silence during an XRUN */
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 			/* fill buffer with silence */
@@ -801,13 +804,33 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t samples;
 	int ret = 0;
 	uint32_t flags = 0;
+	int i = 0;
 	//struct hda_chan_data *hda_chan = dma_chan_get_data(dd->chan);
 
 	comp_info(dev, "RAJWA: dai_copy()");
 
+
+	/* test code -- aimed to overwrite the sampels data and generate noise on speakers */
+	int32_t *ptr = buf->stream.addr;
+	while (ptr != (int32_t *)buf->stream.end_addr) {
+		if (i < 2 ) {
+			*ptr++ = -2147483648;
+			i++;
+		} else if (i < 3 ) {
+			*ptr++ = 2147483647;
+			i++;
+		} else {
+			*ptr++ = 2147483647;
+			i = 0;
+		}
+	}
+	/* end of test code */
+
+
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
 	if (ret < 0) {
+		comp_err(dev, "RAJWA: NO BYTES TO COPY!!!");
 		dai_report_xrun(dev, 0);
 		return ret;
 	}

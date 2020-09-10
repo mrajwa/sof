@@ -172,7 +172,7 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET) {
 		comp_err(dev, "codec_adapter_prepare() error %x: codec_adapter has already been prepared",
 			 ret);
-		return 0;
+		return PPL_STATUS_PATH_STOP;
 	}
 
 	/* Prepare codec */
@@ -369,7 +369,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
         comp_info(dev, "RAJWA: codec_adapter_copy() start. Core %d",
         	  prid);
 
-	//buffer_invalidate(source, MIN(lib_buff_size, bytes_to_process));
+	buffer_invalidate(source, copy_bytes);
 	while (bytes_to_process && 0) {
 		if (bytes_to_process < lib_buff_size) {
 			comp_info(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
@@ -410,7 +410,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 		comp_info(dev, "codec_adapter_copy: codec processed %d bytes", processed);
 	}
 
-	//buffer_writeback(sink, copy_bytes);
+	buffer_writeback(sink, copy_bytes);
 	comp_update_buffer_produce(sink, copy_bytes);
 	comp_update_buffer_consume(source, copy_bytes);
 end:

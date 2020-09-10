@@ -121,6 +121,7 @@ out:
 
 int codec_prepare(struct comp_dev *dev)
 {
+	return 0;
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t codec_id = cd->ca_config.codec_id;
