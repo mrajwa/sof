@@ -30,7 +30,7 @@ include(`platform/intel/intel-generic-dmic.m4')
 
 # The pipeline naming notation is pipe-PROCESSING-DIRECTION.m4
 # PPROC is set by makefile
-define(PIPE_HEADSET_PLAYBACK, `sof/pipe-processing-playback.m4')
+define(PIPE_HEADSET_PLAYBACK, `sof/pipe-volume-playback.m4')
 
 #
 # Define the pipelines

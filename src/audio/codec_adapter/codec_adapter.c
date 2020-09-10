@@ -320,6 +320,7 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 				dst = audio_stream_write_frag_s16(ostream, j);
 				src = audio_stream_read_frag_s16(istream, j);
 				*((int16_t *)dst) = *((int16_t *)src);
+				comp_cl_info(&comp_codec_adapter, "RAJWA: sammple value = %x",*((int16_t *)dst));
 				break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE

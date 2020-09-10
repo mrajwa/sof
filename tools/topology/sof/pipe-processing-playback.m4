@@ -70,7 +70,7 @@ C_CONTROLBYTES(Post Process Runtime Params, PIPELINE_ID,
 
 # Host "Playback with post process" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, DAI_PERIODS, 0, 0)
+W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0, 0)
 
 
 W_CODEC_ADAPTER(0, PIPELINE_FORMAT, 0, 2, 0, LIST(`             ', "Post Process Setup Config", "Post Process Runtime Params"))
