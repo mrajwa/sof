@@ -84,7 +84,7 @@ int codec_init(struct comp_dev *dev)
 				    sizeof(struct codec_interface);
 
 	comp_info(dev, "codec_init() start");
-
+	//return 0;
 	/* Find proper interface */
 	for (i = 0; i < no_of_interfaces; i++) {
 		if (interfaces[i].id == codec_id) {

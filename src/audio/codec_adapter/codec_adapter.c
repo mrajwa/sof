@@ -509,7 +509,7 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 
 	assert(!ret);
 
-	if (cdata->elems_remaining == 0) {
+	if (cdata->elems_remaining == 0 && size) {
 		/* Config has been copied now we can load & apply it
 		 * depending on lib status.
 		 */
