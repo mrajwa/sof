@@ -804,28 +804,8 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t samples;
 	int ret = 0;
 	uint32_t flags = 0;
-	int i = 0;
-	//struct hda_chan_data *hda_chan = dma_chan_get_data(dd->chan);
 
-	comp_info(dev, "RAJWA: dai_copy()");
-
-
-	/* test code -- aimed to overwrite the sampels data and generate noise on speakers */
-	int32_t *ptr = buf->stream.addr;
-	while (ptr != (int32_t *)buf->stream.end_addr) {
-		if (i < 2 ) {
-			*ptr++ = -2147483648;
-			i++;
-		} else if (i < 3 ) {
-			*ptr++ = 2147483647;
-			i++;
-		} else {
-			*ptr++ = 2147483647;
-			i = 0;
-		}
-	}
-	/* end of test code */
-
+	comp_dbg(dev, "dai_copy() start");
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);

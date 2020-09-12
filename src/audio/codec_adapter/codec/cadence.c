@@ -230,8 +230,7 @@ int cadence_codec_prepare(struct comp_dev *dev)
 		ret = -EIO;
 		goto err;
 	} else if (!codec->s_cfg.avail) {
-		comp_warn(dev, "cadence_codec_prepare() error %x: no new setup configuration available, using the old one",
-			 ret);
+		comp_warn(dev, "cadence_codec_prepare(): no new setup configuration available, using the old one");
 		codec->s_cfg.avail = true;
 
 	}

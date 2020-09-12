@@ -215,7 +215,6 @@ end:
 static void codec_adapter_copy_to_lib(const struct audio_stream *source,
 			      void *lib_buff, size_t size)
 {
-	return;
 	void *src;
 	void *dst = lib_buff;
 	size_t i;
@@ -255,7 +254,6 @@ static void codec_adapter_copy_to_lib(const struct audio_stream *source,
 static void codec_adapter_copy_from_lib_to_sink(void *source, struct audio_stream *sink,
 			      size_t size)
 {
-	return;
 	void *dst;
 	void *src = source;
 	size_t i;
@@ -295,54 +293,6 @@ static void codec_adapter_copy_from_lib_to_sink(void *source, struct audio_strea
 
 }
 
-static void kpb_copy_samples(struct comp_buffer *sink,
-			     struct comp_buffer *source, size_t size)
-{
-#if CONFIG_FORMAT_S16LE || CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-	void *dst;
-	void *src;
-#endif
-	size_t i;
-	size_t j = 0;
-	size_t channel;
-	struct audio_stream *istream = &source->stream;
-	struct audio_stream *ostream = &sink->stream;
-	size_t sample_width = 16;
-	size_t frames = size / (sample_width / 8 * 2);
-
-	buffer_invalidate(source, size);
-
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < 2; channel++) {
-			switch (sample_width) {
-#if CONFIG_FORMAT_S16LE
-			case 16:
-				dst = audio_stream_write_frag_s16(ostream, j);
-				src = audio_stream_read_frag_s16(istream, j);
-				*((int16_t *)dst) = *((int16_t *)src);
-				comp_cl_info(&comp_codec_adapter, "RAJWA: sammple value = %x",*((int16_t *)dst));
-				break;
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-			case 24:
-				/* FALLTHROUGH */
-			case 32:
-				dst = audio_stream_write_frag_s32(ostream, j);
-				src = audio_stream_read_frag_s32(istream, j);
-				*((int32_t *)dst) = *((int32_t *)src);
-				break;
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE*/
-			default:
-				comp_cl_err(&comp_codec_adapter, "KPB: An attempt to copy not supported format!");
-				return;
-			}
-			j++;
-		}
-	}
-
-	buffer_writeback(sink, size);
-}
-
 static int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
@@ -369,8 +319,8 @@ static int codec_adapter_copy(struct comp_dev *dev)
         comp_info(dev, "RAJWA: codec_adapter_copy() start. Core %d",
         	  prid);
 
-	buffer_invalidate(source, copy_bytes);
-	while (bytes_to_process && 0) {
+	buffer_invalidate(source, lib_buff_size);
+	while (bytes_to_process) {
 		if (bytes_to_process < lib_buff_size) {
 			comp_info(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
 			        processed, bytes_to_process);
@@ -402,17 +352,17 @@ static int codec_adapter_copy(struct comp_dev *dev)
 		processed += codec->cpd.produced;
 	}
 
-        kpb_copy_samples(sink, source, copy_bytes);
-	if (!processed && 0) {
+        //kpb_copy_samples(sink, source, copy_bytes);
+	if (!processed) {
 		comp_info(dev, "codec_adapter_copy() error: failed to process anything in this call!");
 		goto end;
 	} else {
 		comp_info(dev, "codec_adapter_copy: codec processed %d bytes", processed);
 	}
 
-	buffer_writeback(sink, copy_bytes);
-	comp_update_buffer_produce(sink, copy_bytes);
-	comp_update_buffer_consume(source, copy_bytes);
+	buffer_writeback(sink, processed);
+	comp_update_buffer_produce(sink, lib_buff_size);
+	comp_update_buffer_consume(source, lib_buff_size);
 end:
         comp_info(dev, "codec_adapter_copy() end processed: %d", processed);
 	return ret;

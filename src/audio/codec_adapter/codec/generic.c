@@ -66,7 +66,7 @@ codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 
 	return ret;
 err:
-	if (dst->data)
+	if (dst->data && type == CODEC_CFG_RUNTIME)
 		rfree(dst->data);
 	dst->data = NULL;
 	return ret;
@@ -84,7 +84,7 @@ int codec_init(struct comp_dev *dev)
 				    sizeof(struct codec_interface);
 
 	comp_info(dev, "codec_init() start");
-	//return 0;
+
 	/* Find proper interface */
 	for (i = 0; i < no_of_interfaces; i++) {
 		if (interfaces[i].id == codec_id) {
@@ -121,7 +121,6 @@ out:
 
 int codec_prepare(struct comp_dev *dev)
 {
-	return 0;
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t codec_id = cd->ca_config.codec_id;
