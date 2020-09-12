@@ -463,13 +463,42 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 		/* Config has been copied now we can load & apply it
 		 * depending on lib status.
 		 */
-		ret = codec_load_config(dev, cd->runtime_params, size,
-					type);
-		if (ret) {
-			comp_err(dev, "ca_set_runtime_params() error %x: lib params load failed",
-				 ret);
+		//rework to switch case here!!
+		if (type == CODEC_CFG_SETUP) {
+			ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cd->runtime_params,
+				       sizeof(cd->ca_config));
+			assert(!ret);
+			ret = validate_setup_config(&cd->ca_config);
+			if (ret) {
+				comp_err(dev, "XXXX(): error: validation of setup config failed");
+				goto end;
+			}
+
+			/* Pass config further to the codec */
+			void *lib_cfg;
+			uint32_t lib_cfg_size;
+			lib_cfg = (char *)cd->runtime_params + sizeof(struct ca_config);
+			lib_cfg_size = size - sizeof(struct ca_config);
+			ret = codec_load_config(dev, lib_cfg, lib_cfg_size,
+						CODEC_CFG_SETUP);
+			if (ret) {
+				comp_err(dev, "XXXX(): error %d: failed to load setup config for codec",
+					 ret);
+			} else {
+				comp_dbg(dev, "XXXX() codec config loaded successfully");
+			}
 			goto end;
-        	}
+		} else {
+			ret = codec_load_config(dev, cd->runtime_params, size,
+						type);
+			if (ret) {
+				comp_err(dev, "ca_set_runtime_params() error %x: lib params load failed",
+					 ret);
+				goto end;
+	        	}
+
+		}
+
 		if (cd->state >= PP_STATE_PREPARED && type == CODEC_CFG_RUNTIME) {
 			/* Post processing is already prepared so we can apply runtime
 			 * config right away.
