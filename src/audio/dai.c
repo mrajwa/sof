@@ -804,8 +804,11 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t samples;
 	int ret = 0;
 	uint32_t flags = 0;
+	uintptr_t prid;
 
-	comp_dbg(dev, "dai_copy() start");
+	__asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
+
+	comp_info(dev, "dai_copy() start. We are on CORE: %d", prid);
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);

@@ -881,6 +881,11 @@ static int host_reset(struct comp_dev *dev)
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	uintptr_t prid;
+
+	__asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
+
+	comp_info(dev, "host_copy(): start. We are running on core %d", prid);
 
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;

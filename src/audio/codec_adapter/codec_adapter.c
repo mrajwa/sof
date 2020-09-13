@@ -415,6 +415,9 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
         int *debug = (void *)0x9e008000;
         static int i;
 
+	comp_info(dev, "ca_set_runtime_params(): start: num_of_elem %d, elem remain %d msg_index %u",
+		  cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
+
         *debug = 0xFEED;
         *(debug+i++) = type;
         *(debug+i++) = cdata->num_elems;
@@ -426,8 +429,6 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 		goto end;
 	}
 
-	comp_info(dev, "ca_set_runtime_params(): num_of_elem %d, elem remain %d msg_index %u",
-		  cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
 	if (cdata->num_elems + cdata->elems_remaining > MAX_BLOB_SIZE)
 	{
@@ -439,6 +440,7 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 	if (cdata->msg_index == 0) {
 		/* Allocate buffer for new params */
 		size = cdata->num_elems + cdata->elems_remaining;
+		//todo: potentuial leakage again here
 		cd->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
 		if (!cd->runtime_params) {
@@ -515,6 +517,8 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 	}
 
 end:
+//THIS need to reworked in 3 labels err & done both freee the memory but normal end does not
+// since if w load large blob of data we need this pointer to stay in concecutive calls
 	if (cd->runtime_params)
 		rfree(cd->runtime_params);
 	cd->runtime_params = NULL;

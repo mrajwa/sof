@@ -702,8 +702,11 @@ static int volume_copy(struct comp_dev *dev)
 	uint32_t sink_bytes;
 	uint32_t frames;
 	int64_t prev_sum = 0;
+	uintptr_t prid;
 
-	comp_dbg(dev, "volume_copy()");
+	__asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
+
+	comp_info(dev, "volume_copy() we are running on core %d", prid);
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
