@@ -30,7 +30,8 @@ include(`platform/intel/intel-generic-dmic.m4')
 
 # The pipeline naming notation is pipe-PROCESSING-DIRECTION.m4
 # PPROC is set by makefile
-define(PIPE_HEADSET_PLAYBACK, `sof/pipe-processing-playback.m4')
+# define(PIPE_HEADSET_PLAYBACK, `sof/pipe-processing-playback.m4')
+define(PIPE_HEADSET_PLAYBACK, `sof/pipe-volume-playback.m4')
 
 #
 # Define the pipelines
@@ -48,7 +49,7 @@ define(PIPE_HEADSET_PLAYBACK, `sof/pipe-processing-playback.m4')
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(PIPE_HEADSET_PLAYBACK,
 	1, 99, 2, s32le,
-	1000, 0, 0,
+	1000, 0, 1,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
@@ -102,7 +103,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
         1, HDA, 0, Analog Playback and Capture,
         PIPELINE_SOURCE_1, 2, s32le,
-        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        1000, 0, 1, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is HDA Analog using 2 periods
 # Dai buffers use s32le format, 1000us deadline on core 0 with priority 0
