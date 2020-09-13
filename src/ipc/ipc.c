@@ -70,15 +70,18 @@ struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
+	int *debug = (void *)0x9e008000;
 
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
-		if (icd->id == id)
+		if (icd->id == id) {
 			return icd;
+		}
 
 		platform_shared_commit(icd, sizeof(*icd));
 	}
 
+	*(debug+10) = 0xFEED10;
 	return NULL;
 }
 

@@ -86,8 +86,12 @@ static inline int comp_params(struct comp_dev *dev,
 	int ret = 0;
 
 	if (dev->is_shared && !cpu_is_me(dev->comp.core)) {
+		comp_info(dev, "RAJWA: comp_params(): comp type %d on pipeline %d should be run on other core",
+			dev->comp.type, dev->comp.pipeline_id);
 		ret = comp_params_remote(dev, params);
 	} else {
+		comp_info(dev, "RAJWA: comp_params(): comp type %d on pipeline %d is run on correct core",
+			dev->comp.type, dev->comp.pipeline_id);
 		if (dev->drv->ops.params) {
 			ret = dev->drv->ops.params(dev, params);
 		} else {
@@ -95,8 +99,12 @@ static inline int comp_params(struct comp_dev *dev,
 			ret = comp_verify_params(dev, 0, params);
 			if (ret < 0)
 				comp_err(dev, "pcm params verification failed");
+
 		}
 	}
+
+	comp_info(dev, "RAJWA: comp_params() for comp type %d on pipeline %d done.",
+		  dev->comp.type, dev->comp.pipeline_id);
 
 	comp_shared_commit(dev);
 

@@ -73,6 +73,11 @@ static inline void lp_sram_unpack(void)
 int secondary_core_init(struct sof *sof)
 {
 	int err;
+	static int i = 1;
+	int *debug = (void *)0x9e008000;
+
+	*(debug+4) = 0xFEED02;
+	*(debug+5) = i++;
 
 #ifndef __ZEPHYR__
 	/* init architecture */
@@ -117,6 +122,11 @@ int secondary_core_init(struct sof *sof)
 int primary_core_init(int argc, char *argv[], struct sof *sof)
 {
 	int err;
+	int *debug = (void *)0x9e008000;
+	static int i = 1;
+
+	*(debug) = 0xFEED01;
+	*(debug+1) = i++;
 
 	/* setup context */
 	sof->argc = argc;

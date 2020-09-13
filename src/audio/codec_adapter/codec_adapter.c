@@ -42,6 +42,21 @@ DECLARE_SOF_RT_UUID("codec_adapter", ca_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 
 DECLARE_TR_CTX(ca_tr, SOF_UUID(ca_uuid), LOG_LEVEL_INFO);
 
+
+static void ca_debug(int trace) {
+	int *debug = (void *)0x9e008000;
+	static int i;
+	uintptr_t prid;
+
+	__asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
+
+	if (!i)
+		*(debug+i++) = 0xFEED;
+
+	*(debug+i++) = trace;
+	*(debug+i++) = prid;
+}
+
 static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 					      struct sof_ipc_comp *comp)
 {
@@ -56,6 +71,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	size_t lib_cfg_size;
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_new()");
+	ca_debug(0xFEED1);
 
 	if (!drv || !comp) {
 		comp_cl_err(&comp_codec_adapter, "codec_adapter_new(), wrong input params! drv = %x comp = %x",
@@ -83,7 +99,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	}
 
 	comp_set_drvdata(dev, cd);
-
+	goto end;
 	/* Copy setup config of codec_adapter */
 	cfg = (struct ca_config *)ipc_codec_adapter->data;
 	bs = ipc_codec_adapter->size;
@@ -125,9 +141,10 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		goto err;
 	}
 
+end:
 	dev->state = COMP_STATE_READY;
+	ca_debug(dev->comp.core);
 	cd->state = PP_STATE_CREATED;
-
 	return dev;
 err:
 	//TODO: handle errors
@@ -149,6 +166,8 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "codec_adapter_prepare() start");
+	ca_debug(0xFEED3);
+	ca_debug(dev->comp.core);
 
 	/* Init sink & source buffers */
 	cd->ca_sink = list_first_item(&dev->bsink_list, struct comp_buffer,
@@ -174,7 +193,7 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 			 ret);
 		return PPL_STATUS_PATH_STOP;
 	}
-
+goto end;
 	/* Prepare codec */
 	ret = codec_prepare(dev);
 	if (ret) {
@@ -188,7 +207,7 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 
 	comp_info(dev, "codec_adapter_prepare() done");
         cd->state = PP_STATE_PREPARED;
-
+end:
 	return 0;
 }
 
@@ -196,6 +215,8 @@ static int codec_adapter_params(struct comp_dev *dev,
 				    struct sof_ipc_stream_params *params)
 {
 	int ret = 0;
+	ca_debug(0xFEED2);
+	ca_debug(dev->comp.core);
 
 	if (dev->state == COMP_STATE_PREPARE) {
 		comp_warn(dev, "codec_adapter_params(): params has already been prepared.");
@@ -306,6 +327,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 
 	__asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
 	struct comp_copy_limits c;
+	ca_debug(0xFEED4);
 
 	comp_get_copy_limits_with_lock(source, sink, &c);
 	bytes_to_process = c.frames * audio_stream_frame_bytes(&source->stream);
@@ -386,6 +408,7 @@ static int codec_adapter_trigger(struct comp_dev *dev, int cmd)
 {
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_trigger(): component got trigger cmd %x",
 		     cmd);
+	ca_debug(0xFEED6);
 
 	//TODO: ask lib if pp parameters has been aplied and if not log it!
         //likely here change detect COMP_TRIGGER_START cmd and change state to PP_STATE_RUN
@@ -412,15 +435,10 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 	static uint32_t size;
 	uint32_t offset;
         struct comp_data *cd = comp_get_drvdata(dev);
-        int *debug = (void *)0x9e008000;
-        static int i;
 
 	comp_info(dev, "ca_set_runtime_params(): start: num_of_elem %d, elem remain %d msg_index %u",
 		  cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
-        *debug = 0xFEED;
-        *(debug+i++) = type;
-        *(debug+i++) = cdata->num_elems;
 	/* Stage 1 load whole config locally */
 	/* Check that there is no work-in-progress previous request */
 	if (cd->runtime_params && cdata->msg_index == 0) {
@@ -522,7 +540,6 @@ end:
 	if (cd->runtime_params)
 		rfree(cd->runtime_params);
 	cd->runtime_params = NULL;
-	*(debug+i++) = ret;
 	return ret;
 }
 
@@ -586,6 +603,7 @@ static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 	struct sof_ipc_ctrl_data *cdata = data;
 
 	comp_info(dev, "codec_adapter_cmd() %d start", cmd);
+	ca_debug(0xFEED9);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
