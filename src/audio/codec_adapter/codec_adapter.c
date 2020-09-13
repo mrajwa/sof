@@ -83,7 +83,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	}
 
 	comp_set_drvdata(dev, cd);
-
+	goto end;
 	/* Copy setup config of codec_adapter */
 	cfg = (struct ca_config *)ipc_codec_adapter->data;
 	bs = ipc_codec_adapter->size;
@@ -125,6 +125,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		goto err;
 	}
 
+end:
 	dev->state = COMP_STATE_READY;
 	cd->state = PP_STATE_CREATED;
 
