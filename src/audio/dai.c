@@ -779,6 +779,9 @@ static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
 /* report xrun occurrence */
 static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 {
+	int *debug = (void *)0x9e008000;
+
+	*(debug+20) = 0xAABBCCDD;
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -852,6 +855,7 @@ static int dai_copy(struct comp_dev *dev)
 
 	ret = dma_copy(dd->chan, copy_bytes, 0);
 	if (ret < 0) {
+		comp_err(dev, "RAJWA: we report XRUN");
 		dai_report_xrun(dev, copy_bytes);
 		return ret;
 	}

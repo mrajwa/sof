@@ -52,6 +52,8 @@ static void ca_debug(int trace) {
 
 	if (!i)
 		*(debug+i++) = 0xFEED;
+	else if (i > 50)
+		i = 1;
 
 	*(debug+i++) = trace;
 	*(debug+i++) = prid;
