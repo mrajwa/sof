@@ -88,6 +88,7 @@ struct comp_data {
 	struct comp_buffer *ca_sink;
 	struct comp_buffer *ca_source;
 	void *runtime_params;
+	uint32_t processed;
 };
 
 /*****************************************************************************/

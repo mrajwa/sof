@@ -374,18 +374,18 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	}
 
         //kpb_copy_samples(sink, source, copy_bytes);
-	if (!processed) {
+	if (!processed && !codec->cpd.produced) {
 		comp_info(dev, "codec_adapter_copy() error: failed to process anything in this call!");
 		goto end;
-	} else {
-		comp_info(dev, "codec_adapter_copy: codec processed %d bytes", processed);
+	} else if (codec->cpd.produced) {
+		comp_info(dev, "codec_adapter_copy: codec processed %d bytes", codec->cpd.produced);
 	}
 
-	buffer_writeback(sink, processed);
-	comp_update_buffer_produce(sink, lib_buff_size);
-	comp_update_buffer_consume(source, lib_buff_size);
+	buffer_writeback(sink, lib_buff_size);
+	comp_update_buffer_produce(sink, codec->cpd.produced);
+	comp_update_buffer_consume(source, codec->cpd.produced);
+	codec->cpd.produced = 0;
 end:
-        comp_info(dev, "codec_adapter_copy() end processed: %d", processed);
 	return ret;
 }
 
