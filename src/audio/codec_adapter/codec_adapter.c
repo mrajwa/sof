@@ -99,7 +99,6 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	}
 
 	comp_set_drvdata(dev, cd);
-	goto end;
 	/* Copy setup config of codec_adapter */
 	cfg = (struct ca_config *)ipc_codec_adapter->data;
 	bs = ipc_codec_adapter->size;
@@ -141,7 +140,6 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		goto err;
 	}
 
-end:
 	dev->state = COMP_STATE_READY;
 	ca_debug(dev->comp.core);
 	cd->state = PP_STATE_CREATED;
@@ -193,7 +191,6 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 			 ret);
 		return PPL_STATUS_PATH_STOP;
 	}
-goto end;
 	/* Prepare codec */
 	ret = codec_prepare(dev);
 	if (ret) {
@@ -207,7 +204,7 @@ goto end;
 
 	comp_info(dev, "codec_adapter_prepare() done");
         cd->state = PP_STATE_PREPARED;
-end:
+
 	return 0;
 }
 
