@@ -31,12 +31,6 @@ extern xa_codec_func_t xa_dap_vlldp;
 #define LIB_NAME_MAX_LEN 30
 #define LIB_NO_ERROR XA_NO_ERROR
 
-struct cadence_codec_param {
-	uint32_t id;
-	uint32_t size;
-	int32_t data[];
-};
-
 struct cadence_codec_data {
 	char name[LIB_NAME_MAX_LEN];
 	void *self;

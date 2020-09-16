@@ -45,6 +45,12 @@ struct codec_config {
 	void *data; /* tlv config */
 };
 
+struct codec_param {
+	uint32_t id;
+	uint32_t size;
+	int32_t data[];
+};
+
 struct codec_processing_data {
 	uint32_t in_buff_size;
 	uint32_t out_buff_size;
