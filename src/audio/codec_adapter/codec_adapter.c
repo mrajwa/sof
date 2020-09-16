@@ -437,9 +437,9 @@ static void codec_adapter_free(struct comp_dev *dev)
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): start");
 
+	codec_free(dev);
 	rfree(cd);
 	rfree(dev);
-	//TODO: call lib API to free its resources
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): component memory freed");
 
@@ -451,19 +451,25 @@ static int codec_adapter_trigger(struct comp_dev *dev, int cmd)
 		     cmd);
 	ca_debug(0xFEED6);
 
-	//TODO: ask lib if pp parameters has been aplied and if not log it!
+	//TODO: ask lib if pp parameters hamos been aplied and if not log it!
         //likely here change detect COMP_TRIGGER_START cmd and change state to PP_STATE_RUN
 	return comp_set_state(dev, cmd);
 }
 
 static int codec_adapter_reset(struct comp_dev *dev)
 {
+	int ret;
         struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): resetting");
 
+	ret = codec_reset(dev);
+	if (ret) {
+		comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): error %d, codec reset has failed",
+			     ret);
+	}
+
         cd->state = PP_STATE_CREATED;
-        //TODO: reset codec params
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }

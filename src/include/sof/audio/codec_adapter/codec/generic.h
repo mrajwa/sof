@@ -32,6 +32,8 @@ struct codec_interface {
 	int (*prepare)(struct comp_dev *dev);
 	int (*process)(struct comp_dev *dev);
 	int (*apply_config)(struct comp_dev *dev);
+	int (*reset)(struct comp_dev *dev);
+	int (*free)(struct comp_dev *dev);
 };
 
 enum codec_cfg_type {
@@ -60,6 +62,12 @@ struct codec_processing_data {
 	void *out_buff;
 };
 
+struct codec_memory {
+	void *ptr;
+	struct codec_memory *prev;
+	struct codec_memory *next;
+};
+
 struct codec_data {
 	enum codec_state state;
 	char *name;
@@ -69,6 +77,7 @@ struct codec_data {
 	struct codec_config r_cfg; /**< runtime config */
 	struct codec_processing_data cpd; /**< shared data comp <-> codec */
 	struct codec_interface *call;
+	struct codec_memory *memory;
 };
 
 enum ca_state {
@@ -106,5 +115,10 @@ int codec_init(struct comp_dev *dev);
 int codec_prepare(struct comp_dev *dev);
 int codec_process(struct comp_dev *dev);
 int codec_apply_runtime_config(struct comp_dev *dev);
+void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
+			    uint32_t alignment);
+int codec_free_memory(struct comp_dev *dev, void *ptr);
+int codec_reset(struct comp_dev *dev);
+void codec_free(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */

@@ -11,6 +11,7 @@
 #include <sof/audio/codec_adapter/codec/generic.h>
 
 #define MAX_BLOB_SIZE 4096
+
 /*****************************************************************************/
 /* Codec adapter internal functions							     */
 /*****************************************************************************/
@@ -21,5 +22,9 @@ static  inline int validate_setup_config(struct ca_config *cfg)
 	/* TODO: custom validation of codec_adapter setup parameters */
 	return 0;
 }
+
+/*****************************************************************************/
+/* Codec adapter public interfaces							     */
+/*****************************************************************************/
 
 #endif /* __SOF_AUDIO_CODEC_ADAPTER__ */
