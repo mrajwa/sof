@@ -101,7 +101,6 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 		}
 		data = (char *)data + param->size;
 		size -= param->size;
-
 	}
 
 	comp_dbg(dev, "apply_config() done");
@@ -241,21 +240,10 @@ int cadence_codec_prepare(struct comp_dev *dev)
 			 ret);
 		goto err;
 	}
-	/* Do not reset codec setup config "size" so we can use it later on
+	/* Do not reset nor free codec setup config "size" so we can use it later on
 	 * in case there is no new one.
 	 */
 	codec->s_cfg.avail = false;
-
-	if (codec->r_cfg.avail) {
-		ret = apply_config(dev, CODEC_CFG_RUNTIME);
-		if (ret) {
-			comp_err(dev, "cadence_codec_prepare() error %x: failed to applay runtime config",
-				 ret);
-			goto err;
-		}
-		codec->r_cfg.avail = false;
-		codec->r_cfg.size = 0;
-	}
 
 	/* Allocate memory for the codec */
 	API_CALL(cd, XA_API_CMD_GET_MEMTABS_SIZE, 0, &mem_tabs_size, ret);

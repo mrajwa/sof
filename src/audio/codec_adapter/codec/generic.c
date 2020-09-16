@@ -142,6 +142,10 @@ int codec_prepare(struct comp_dev *dev)
 		goto end;
 	}
 
+	codec->s_cfg.avail = false;
+	codec->r_cfg.avail = false;
+	rfree(codec->r_cfg.data);
+	codec->r_cfg.data = NULL;
 
 	comp_dbg(dev, "codec_prepare() done");
 	codec->state = CODEC_PREPARED;
@@ -196,6 +200,10 @@ int codec_apply_runtime_config(struct comp_dev *dev) {
 			 ret, codec_id);
 		goto out;
 	}
+
+	cd->codec.r_cfg.avail = false;
+	rfree(codec->r_cfg.data);
+	codec->r_cfg.data = NULL;
 
 	comp_dbg(dev, "codec_apply_config() end");
 out:
@@ -296,6 +304,9 @@ static void codec_free_all_memory(struct comp_dev *dev) {
 	struct codec_memory *mem = cd->codec.memory;
 	struct codec_memory *_mem;
 
+	if (!mem)
+		return;
+
 	/* Find which container keeps this memory */
 	do {
 		if (mem->prev) {
@@ -326,8 +337,12 @@ void codec_free(struct comp_dev *dev)
 	/* Free all memory requested by codec */
 	codec_free_all_memory(dev);
 	/* Free all memory shared by codec_adapter & codec */
-	rfree(codec->s_cfg.data);
+	codec->s_cfg.avail = false;
+	codec->s_cfg.size = 0;
+	codec->r_cfg.avail = false;
+	codec->r_cfg.size = 0;
 	rfree(codec->r_cfg.data);
+	rfree(codec->s_cfg.data);
 	if (cd->runtime_params)
 		rfree(cd->runtime_params);
 }
@@ -345,8 +360,10 @@ int codec_reset(struct comp_dev *dev)
 		return ret;
 	}
 
-	/* Free all memory requested by codec */
-	codec_free_all_memory(dev);
+	codec->r_cfg.avail = false;
+	codec->r_cfg.size = 0;
+	rfree(codec->r_cfg.data);
+
 	return 0;
 }
 

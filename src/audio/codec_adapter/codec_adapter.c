@@ -45,15 +45,16 @@ DECLARE_TR_CTX(ca_tr, SOF_UUID(ca_uuid), LOG_LEVEL_INFO);
 
 static void ca_debug(int trace) {
 	int *debug = (void *)0x9e008000;
-	static int i;
+	static int i = 2;
 	uintptr_t prid;
 
 	__asm__ __volatile__("rsr %0, PRID" : "=a" (prid) : : "memory");
 
-	if (!i)
-		*(debug+i++) = 0xFEED;
-	else if (i > 50)
-		i = 1;
+	*(debug) = 0xFEED;
+	*(debug+1) = i;
+
+	if (i > 50)
+		i = 2;
 
 	*(debug+i++) = trace;
 	*(debug+i++) = prid;
@@ -434,6 +435,7 @@ end:
 static void codec_adapter_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	ca_debug(0xFEED8);
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): start");
 
@@ -461,6 +463,7 @@ static int codec_adapter_reset(struct comp_dev *dev)
 	int ret;
         struct comp_data *cd = comp_get_drvdata(dev);
 
+	ca_debug(0xFEED7);
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): resetting");
 
 	ret = codec_reset(dev);
