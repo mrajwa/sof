@@ -221,7 +221,8 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 		comp_cl_err(&comp_dai, "dai_new(): dma_get() failed to get shared access to DMA.");
 		goto error;
 	}
-
+	comp_info(dev, "RAJWA: we have seleced dai id %d for pipeline %d",
+		  dd->dma->plat_data.id, dev->comp.pipeline_id);
 	dma_sg_init(&dd->config.elem_array);
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;

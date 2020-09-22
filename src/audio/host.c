@@ -566,6 +566,8 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	hd->copy_type = COMP_COPY_NORMAL;
 	dev->state = COMP_STATE_READY;
 
+	comp_info(dev, "RAJWA: for HOST have seleced dai id %d for pipeline %d",
+		  hd->dma->plat_data.id, dev->comp.pipeline_id);
 	return dev;
 }
 
