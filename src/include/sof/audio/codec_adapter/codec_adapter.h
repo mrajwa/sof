@@ -10,4 +10,9 @@
 
 #include <sof/audio/codec_adapter/codec/generic.h>
 
+/*****************************************************************************/
+/* Codec adapter internal functions							     */
+/*****************************************************************************/
+static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size);
+
 #endif /* __SOF_AUDIO_CODEC_ADAPTER__ */
