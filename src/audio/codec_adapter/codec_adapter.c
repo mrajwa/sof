@@ -28,7 +28,6 @@ DECLARE_SOF_RT_UUID("codec_adapter", ca_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 
 DECLARE_TR_CTX(ca_tr, SOF_UUID(ca_uuid), LOG_LEVEL_INFO);
 
-
 /**
  * \brief Create a codec adapter component.
  * \param[in] drv - component driver pointer.
@@ -42,6 +41,8 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	int ret;
 	struct comp_dev *dev;
 	struct comp_data *cd;
+	struct sof_ipc_comp_process *ipc_codec_adapter =
+		(struct sof_ipc_comp_process *)comp;
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_new() start");
 
@@ -71,12 +72,51 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	}
 
 	comp_set_drvdata(dev, cd);
+	/* Copy setup config */
+	ret = load_setup_config(dev, ipc_codec_adapter->data, ipc_codec_adapter->size);
+	if (ret) {
+		comp_err(dev, "codec_adapter_new() error %d: config loading has failed.",
+			 ret);
+		goto err;
+	}
 
 	dev->state = COMP_STATE_READY;
 	cd->state = PP_STATE_CREATED;
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_new() done");
 	return dev;
+err:
+	rfree(cd);
+	rfree(dev);
+	return NULL;
+}
+
+static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "load_setup_config() start.");
+
+	if (!dev) {
+		comp_err(dev, "load_setup_config(): no component device.");
+		ret = -EINVAL;
+		goto end;
+	} else if (!cfg || !size) {
+		comp_err(dev, "load_setup_config(): no config available cfg: %x, size: %d",
+			 (uintptr_t)cfg, size);
+		ret = -EINVAL;
+		goto end;
+	}
+
+	/* Copy codec_adapter part */
+	ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cfg,
+		       sizeof(struct ca_config));
+	assert(!ret);
+
+	comp_dbg(dev, "load_setup_config() done.");
+end:
+	return ret;
 }
 
 static const struct comp_driver comp_codec_adapter = {

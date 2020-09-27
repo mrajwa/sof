@@ -24,9 +24,18 @@ enum ca_state {
 	PP_STATE_RUN,
 };
 
+struct ca_config {
+	uint32_t codec_id;
+	uint32_t reserved;
+	uint32_t sample_rate;
+	uint32_t sample_width;
+	uint32_t channels;
+};
+
 /* codec_adapter private, runtime data */
 struct comp_data {
 	enum ca_state state; /**< current state of codec_adapter */
+	struct ca_config ca_config;
 };
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */
