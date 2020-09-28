@@ -14,6 +14,8 @@
 
 #include <sof/audio/component.h>
 
+#define comp_get_codec(d) (&(((struct comp_data *)(d->priv_data))->codec))
+
 /*****************************************************************************/
 /* Codec generic data types						     */
 /*****************************************************************************/
