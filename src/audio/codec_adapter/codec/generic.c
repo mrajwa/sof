@@ -125,6 +125,53 @@ out:
 	return ret;
 }
 
+void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
+			    uint32_t alignment)
+{
+	struct codec_memory *container;
+	void *ptr;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	if (!size) {
+		comp_err(dev, "codec_allocate_memory: requested allocation of 0 bytes.");
+		return NULL;
+	}
+
+	/* Allocate memory container */
+	container = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			    sizeof(struct codec_memory));
+	if (!container) {
+		comp_err(dev, "codec_allocate_memory: failed to allocate memory container.");
+		return NULL;
+	}
+
+	/* Allocate memory for codec */
+	if (alignment)
+		ptr = rballoc_align(0, SOF_MEM_CAPS_RAM, size, alignment);
+	else
+		ptr = rballoc(0, SOF_MEM_CAPS_RAM, size);
+
+	if (!ptr) {
+		comp_err(dev, "codec_allocate_memory: failed to allocate memory for codec %x.",
+			 cd->ca_config.codec_id);
+		return NULL;
+	}
+	/* Store reference to allocated memory */
+	container->ptr = ptr;
+	if (!cd->codec.memory) {
+		cd->codec.memory = container;
+		container->prev = NULL;
+		container->next = NULL;
+	} else {
+		container->prev = cd->codec.memory;
+		container->next = NULL;
+		cd->codec.memory->next = container;
+		cd->codec.memory = container;
+	}
+
+	return ptr;
+}
+
 static int validate_config(struct codec_config *cfg)
 {
 	//TODO: validation of codec specifig setup config

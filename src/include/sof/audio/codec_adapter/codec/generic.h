@@ -55,11 +55,19 @@ struct codec_config {
 	void *data; /* tlv config */
 };
 
+struct codec_memory {
+	void *ptr;
+	struct codec_memory *prev;
+	struct codec_memory *next;
+};
+
 struct codec_data {
 	enum codec_state state;
 	struct codec_config s_cfg; /**< setup config */
 	struct codec_config r_cfg; /**< runtime config */
 	struct codec_interface *call;
+	void *private; /**< self object, memory tables etc here */
+	struct codec_memory *memory;
 };
 
 /* codec_adapter private, runtime data */
@@ -75,5 +83,7 @@ struct comp_data {
 int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		      enum codec_cfg_type type);
 int codec_init(struct comp_dev *dev);
+void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
+			    uint32_t alignment);
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */
