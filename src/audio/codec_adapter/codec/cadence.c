@@ -16,6 +16,7 @@
 
 int cadence_codec_init(struct comp_dev *dev)
 {
+	int ret;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = NULL;
 
@@ -31,6 +32,16 @@ int cadence_codec_init(struct comp_dev *dev)
 	cd->self = NULL;
 	cd->mem_tabs = NULL;
 
+	API_CALL(cd, XA_API_CMD_GET_LIB_ID_STRINGS,
+		 XA_CMD_TYPE_LIB_NAME, cd->name, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_init() error %x: failed to get lib name",
+			 ret);
+		codec_free_memory(dev, cd);
+		goto out;
+	}
+
 	comp_dbg(dev, "cadence_codec_init() done");
-	return 0;
+out:
+	return ret;
 }
