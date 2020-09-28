@@ -17,6 +17,11 @@
 /*****************************************************************************/
 /* Codec generic data types						     */
 /*****************************************************************************/
+struct codec_interface {
+	uint32_t id;
+	int (*init)(struct comp_dev *dev);
+};
+
 enum codec_cfg_type {
 	CODEC_CFG_SETUP,
 	CODEC_CFG_RUNTIME
@@ -27,6 +32,13 @@ enum ca_state {
 	PP_STATE_CREATED,
 	PP_STATE_PREPARED,
 	PP_STATE_RUN,
+};
+
+enum codec_state {
+	CODEC_DISABLED,
+	CODEC_INITIALIZED,
+	CODEC_PREPARED,
+	CODEC_RUNNING
 };
 
 struct ca_config {
@@ -44,8 +56,10 @@ struct codec_config {
 };
 
 struct codec_data {
+	enum codec_state state;
 	struct codec_config s_cfg; /**< setup config */
 	struct codec_config r_cfg; /**< runtime config */
+	struct codec_interface *call;
 };
 
 /* codec_adapter private, runtime data */
@@ -60,5 +74,6 @@ struct comp_data {
 /*****************************************************************************/
 int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		      enum codec_cfg_type type);
+int codec_init(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */

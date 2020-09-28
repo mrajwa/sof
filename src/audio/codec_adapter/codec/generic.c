@@ -12,6 +12,7 @@
  */
 
 #include <sof/audio/codec_adapter/codec/generic.h>
+#include <sof/audio/codec_adapter/interfaces.h>
 
 /*****************************************************************************/
 /* Local helper functions						     */
@@ -69,6 +70,58 @@ err:
 	if (dst->data && type == CODEC_CFG_RUNTIME)
 		rfree(dst->data);
 	dst->data = NULL;
+	return ret;
+}
+
+int codec_init(struct comp_dev *dev)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint32_t codec_id = cd->ca_config.codec_id;
+	struct codec_data *codec = &cd->codec;
+	struct codec_interface *interface = NULL;
+	uint32_t i;
+	uint32_t no_of_interfaces = sizeof(interfaces) /
+				    sizeof(struct codec_interface);
+
+	comp_info(dev, "codec_init() start");
+
+	if (cd->codec.state == CODEC_INITIALIZED)
+		return 0;
+	if (cd->codec.state > CODEC_INITIALIZED)
+		return -EPERM;
+
+	/* Find proper interface */
+	for (i = 0; i < no_of_interfaces; i++) {
+		if (interfaces[i].id == codec_id) {
+			interface = &interfaces[i];
+			break;
+		}
+	}
+	if (!interface) {
+		comp_err(dev, "codec_init(): could not find codec interface for codec id %x",
+			 codec_id);
+		ret = -EIO;
+		goto out;
+	} else if (!interface->init) {//TODO: verify other interfaces
+		comp_err(dev, "codec_init(): codec %x is missing required interfaces",
+			 codec_id);
+		ret = -EIO;
+		goto out;
+	}
+	/* Assign interface */
+	codec->call = interface;
+	/* Now we can proceed with codec specific initialization */
+	ret = codec->call->init(dev);
+	if (ret) {
+		comp_err(dev, "codec_init() error %d: codec specific init failed, codec_id %x",
+			 ret, codec_id);
+		goto out;
+	}
+
+	comp_info(dev, "codec_init() done");
+	codec->state = CODEC_INITIALIZED;
+out:
 	return ret;
 }
 
