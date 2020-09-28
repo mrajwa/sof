@@ -79,6 +79,13 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 			 ret);
 		goto err;
 	}
+	/* Init processing codec */
+	ret = codec_init(dev);
+	if (ret) {
+		comp_err(dev, "codec_adapter_new() %d: codec initialization failed",
+			 ret);
+		goto err;
+	}
 
 	dev->state = COMP_STATE_READY;
 	cd->state = PP_STATE_CREATED;

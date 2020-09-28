@@ -60,5 +60,6 @@ struct comp_data {
 /*****************************************************************************/
 int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		      enum codec_cfg_type type);
+int codec_init(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */

@@ -72,6 +72,11 @@ err:
 	return ret;
 }
 
+int codec_init(struct comp_dev *dev)
+{
+	return 0;
+}
+
 static int validate_config(struct codec_config *cfg)
 {
 	//TODO: validation of codec specifig setup config
