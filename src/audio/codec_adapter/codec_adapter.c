@@ -130,8 +130,11 @@ static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 			 (uintptr_t)cfg, size);
 		ret = -EINVAL;
 		goto end;
+	} else if (size <= sizeof(struct ca_config)) {
+		comp_err(dev, "load_setup_config(): no codec config available.");
+		ret = -EIO;
+		goto end;
 	}
-
 	/* Copy codec_adapter part */
 	ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cfg,
 		       sizeof(struct ca_config));
