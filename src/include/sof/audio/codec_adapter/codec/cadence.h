@@ -14,6 +14,20 @@
 #include <sof/audio/cadence/xa_memory_standards.h>
 
 #define LIB_NAME_MAX_LEN 30
+
+/*****************************************************************************/
+/* Codec API interface							     */
+/*****************************************************************************/
+extern xa_codec_func_t cadence_api_function;
+#define API cadence_api_function
+#define API_CALL(cd, cmd, sub_cmd, value, ret) \
+	do { \
+		ret = API((cd)->self, \
+			  (cmd), \
+			  (sub_cmd), \
+			  (value)); \
+	} while (0)
+
 /*****************************************************************************/
 /* Codec private data types						     */
 /*****************************************************************************/

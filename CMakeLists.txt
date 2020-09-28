@@ -181,6 +181,10 @@ target_link_libraries(sof PRIVATE sof_options)
 target_link_libraries(sof PRIVATE sof_ld_scripts)
 target_link_libraries(sof PRIVATE sof_ld_flags)
 target_link_libraries(sof PRIVATE sof_static_libraries)
+# link codec library for codec_adapter to use
+if(CONFIG_CADENCE_CODEC)
+               target_link_libraries(sof PRIVATE ${PROJECT_SOURCE_DIR}/cadence_lib.a)
+endif()
 
 sof_add_build_counter_rule()
 
