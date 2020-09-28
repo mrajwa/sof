@@ -13,6 +13,11 @@
 
 #include <sof/audio/codec_adapter/codec/generic.h>
 
+/*****************************************************************************/
+/* Local helper functions						     */
+/*****************************************************************************/
+static int validate_config(struct codec_config *cfg);
+
 int
 codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		  enum codec_cfg_type type)
@@ -47,6 +52,12 @@ codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 
 	ret = memcpy_s(dst->data, size, cfg, size);
 	assert(!ret);
+	ret = validate_config(dst->data);
+	if (ret) {
+		comp_err(dev, "codec_load_config(): validation of config failed!");
+		ret = -EINVAL;
+		goto err;
+	}
 
 	/* Config loaded, mark it as valid */
 	dst->size = size;
@@ -59,4 +70,10 @@ err:
 		rfree(dst->data);
 	dst->data = NULL;
 	return ret;
+}
+
+static int validate_config(struct codec_config *cfg)
+{
+	//TODO: validation of codec specifig setup config
+	return 0;
 }
