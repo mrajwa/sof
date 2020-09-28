@@ -91,6 +91,12 @@ err:
 	return NULL;
 }
 
+static inline int validate_setup_config(struct ca_config *cfg)
+{
+	/* TODO: validate codec_adapter setup parameters */
+	return 0;
+}
+
 static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 {
 	int ret;
@@ -113,6 +119,11 @@ static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 	ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cfg,
 		       sizeof(struct ca_config));
 	assert(!ret);
+	ret = validate_setup_config(&cd->ca_config);
+	if (ret) {
+		comp_err(dev, "load_setup_config(): validation of setup config for codec_adapter failed.");
+		goto end;
+	}
 
 	comp_dbg(dev, "load_setup_config() done.");
 end:
