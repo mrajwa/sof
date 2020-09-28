@@ -172,6 +172,47 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 	return ptr;
 }
 
+int codec_free_memory(struct comp_dev *dev, void *ptr)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_memory *mem = cd->codec.memory;
+	struct codec_memory *_mem;
+
+	if (!ptr) {
+		comp_err(dev, "codec_free_memory: error: NULL pointer passed.");
+		return -EINVAL;
+	}
+	/* Find which container keeps this memory */
+	do {
+		if (mem->ptr == ptr) {
+			rfree(ptr);
+			mem->ptr = NULL;
+			if (mem->prev && mem->next) {
+				mem->prev->next = mem->next;
+				mem->next->prev = mem->prev;
+				_mem = mem->prev;
+				rfree(mem);
+				mem = _mem;
+			} else if (mem->prev) {
+				mem->prev->next = NULL;
+				cd->codec.memory = mem->prev;
+				rfree(mem);
+			} else {
+				rfree(mem);
+				cd->codec.memory = NULL;
+			}
+
+			return 0;
+		}
+		mem = mem->prev;
+	} while (mem);
+
+	comp_err(dev, "codec_free_memory: error: could not find memory pointed by %p",
+		 (uint32_t)ptr);
+
+	return -EINVAL;
+}
+
 static int validate_config(struct codec_config *cfg)
 {
 	//TODO: validation of codec specifig setup config

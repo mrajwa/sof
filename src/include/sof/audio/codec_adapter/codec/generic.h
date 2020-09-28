@@ -85,5 +85,6 @@ int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 int codec_init(struct comp_dev *dev);
 void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 			    uint32_t alignment);
+int codec_free_memory(struct comp_dev *dev, void *ptr);
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */
