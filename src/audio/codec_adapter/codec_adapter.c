@@ -97,9 +97,26 @@ static inline int validate_setup_config(struct ca_config *cfg)
 	return 0;
 }
 
+/**
+ * \brief Load setup config for both codec adapter and codec library.
+ * \param[in] dev - codec adapter component device pointer.
+ * \param[in] cfg - pointer to the configuration data.
+ * \param[in] size - size of config.
+ *
+ * The setup config comprises of two parts - one contains essential data
+ * for the initialization of codec_adapter and follows struct ca_config.
+ * Second contains codec specific data needed to setup the codec itself.
+ * The leter is send in a TLV format organized by struct codec_param.
+ *
+ * \return integer representing either:
+ *	0 -> success
+ *	negative value -> failure.
+ */
 static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 {
 	int ret;
+	void *lib_cfg;
+	size_t lib_cfg_size;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "load_setup_config() start.");
@@ -122,6 +139,15 @@ static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 	ret = validate_setup_config(&cd->ca_config);
 	if (ret) {
 		comp_err(dev, "load_setup_config(): validation of setup config for codec_adapter failed.");
+		goto end;
+	}
+	/* Copy codec specific part */
+	lib_cfg = (char *)cfg + sizeof(struct ca_config);
+	lib_cfg_size = size - sizeof(struct ca_config);
+	ret = codec_load_config(dev, lib_cfg, lib_cfg_size, CODEC_CFG_SETUP);
+	if (ret) {
+		comp_err(dev, "load_setup_config(): %d: failed to load setup config for codec id %x",
+			 ret, cd->ca_config.codec_id);
 		goto end;
 	}
 
