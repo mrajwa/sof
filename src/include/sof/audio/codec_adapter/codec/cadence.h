@@ -14,6 +14,7 @@
 #include <sof/audio/cadence/xa_memory_standards.h>
 
 #define LIB_NAME_MAX_LEN 30
+#define LIB_NO_ERROR XA_NO_ERROR
 
 /*****************************************************************************/
 /* Codec API interface							     */

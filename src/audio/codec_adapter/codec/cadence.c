@@ -16,8 +16,10 @@
 
 int cadence_codec_init(struct comp_dev *dev)
 {
+	int ret;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = NULL;
+	uint32_t obj_size;
 
 	comp_dbg(dev, "cadence_codec_init() start");
 
@@ -31,6 +33,32 @@ int cadence_codec_init(struct comp_dev *dev)
 	cd->self = NULL;
 	cd->mem_tabs = NULL;
 
+	API_CALL(cd, XA_API_CMD_GET_LIB_ID_STRINGS,
+		 XA_CMD_TYPE_LIB_NAME, cd->name, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_init() error %x: failed to get lib name",
+			 ret);
+		codec_free_memory(dev, cd);
+		goto out;
+	}
+	API_CALL(cd, XA_API_CMD_GET_API_SIZE, 0, &obj_size, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_init() error %x: failed to get lib object size",
+			 ret);
+		codec_free_memory(dev, cd);
+		goto out;
+	}
+	cd->self = codec_allocate_memory(dev, obj_size, 0);
+	if (!cd->self) {
+		comp_err(dev, "cadence_codec_init(): failed to allocate space for lib object");
+		codec_free_memory(dev, cd);
+		goto out;
+	} else {
+		comp_dbg(dev, "cadence_codec_init(): allocated %d bytes for lib object",
+			 obj_size);
+	}
+
 	comp_dbg(dev, "cadence_codec_init() done");
-	return 0;
+out:
+	return ret;
 }
