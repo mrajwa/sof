@@ -8,6 +8,11 @@
 #ifndef __SOF_AUDIO_CADENCE_CODEC__
 #define __SOF_AUDIO_CADENCE_CODEC__
 
+#include <sof/audio/cadence/xa_type_def.h>
+#include <sof/audio/cadence/xa_apicmd_standards.h>
+#include <sof/audio/cadence/xa_error_standards.h>
+#include <sof/audio/cadence/xa_memory_standards.h>
+
 #define LIB_NAME_MAX_LEN 30
 /*****************************************************************************/
 /* Codec private data types						     */
