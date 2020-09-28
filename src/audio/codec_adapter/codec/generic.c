@@ -109,6 +109,15 @@ int codec_init(struct comp_dev *dev)
 		ret = -EIO;
 		goto out;
 	}
+	/* Assign interface */
+	codec->call = interface;
+	/* Now we can proceed with codec specific initialization */
+	ret = codec->call->init(dev);
+	if (ret) {
+		comp_err(dev, "codec_init() error %d: codec specific init failed, codec_id %x",
+			 ret, codec_id);
+		goto out;
+	}
 
 	comp_info(dev, "codec_init() done");
 	codec->state = CODEC_INITIALIZED;

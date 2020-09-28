@@ -59,6 +59,7 @@ struct codec_data {
 	enum codec_state state;
 	struct codec_config s_cfg; /**< setup config */
 	struct codec_config r_cfg; /**< runtime config */
+	struct codec_interface *call;
 };
 
 /* codec_adapter private, runtime data */
