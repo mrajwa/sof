@@ -62,3 +62,25 @@ int cadence_codec_init(struct comp_dev *dev)
 out:
 	return ret;
 }
+
+int cadence_codec_prepare(struct comp_dev *dev)
+{
+	int ret;
+	struct codec_data *codec = comp_get_codec(dev);
+	struct cadence_codec_data *cd = codec->private;
+
+	comp_dbg(dev, "cadence_codec_prepare() start");
+
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
+		 NULL, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_init(): error %x: failed to set default config",
+			 ret);
+		goto err;
+	}
+
+	comp_dbg(dev, "cadence_codec_prepare() done");
+	return 0;
+err:
+	return ret;
+}
