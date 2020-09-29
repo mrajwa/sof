@@ -220,6 +220,14 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	return 0;
 }
 
+static int codec_adapter_params(struct comp_dev *dev,
+				    struct sof_ipc_stream_params *params)
+{
+	comp_dbg(dev, "codec_adapter_params(): codec_adapter doesn't support .params() method.");
+
+	return 0;
+}
+
 static const struct comp_driver comp_codec_adapter = {
 	.type = SOF_COMP_NONE,
 	.uid = SOF_RT_UUID(ca_uuid),
@@ -227,5 +235,6 @@ static const struct comp_driver comp_codec_adapter = {
 	.ops = {
 		.create = codec_adapter_new,
 		.prepare = codec_adapter_prepare,
+		.params = codec_adapter_params,
 	},
 };
