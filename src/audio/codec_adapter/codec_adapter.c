@@ -19,6 +19,8 @@
 #include <sof/audio/codec_adapter/codec_adapter.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
+#include <sof/platform.h>
+#include <sof/ut.h>
 
 static const struct comp_driver comp_codec_adapter;
 
@@ -238,3 +240,15 @@ static const struct comp_driver comp_codec_adapter = {
 		.params = codec_adapter_params,
 	},
 };
+
+static SHARED_DATA struct comp_driver_info comp_codec_adapter_info = {
+	.drv = &comp_codec_adapter,
+};
+
+UT_STATIC void sys_comp_codec_adapter_init(void)
+{
+	comp_register(platform_shared_get(&comp_codec_adapter_info,
+					  sizeof(comp_codec_adapter_info)));
+}
+
+DECLARE_MODULE(sys_comp_codec_adapter_init);
