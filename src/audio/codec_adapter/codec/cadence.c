@@ -109,7 +109,7 @@ ret:
 
 int cadence_codec_prepare(struct comp_dev *dev)
 {
-	int ret;
+	int ret, mem_tabs_size;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
@@ -141,6 +141,32 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	 * later on in case there is no new one upon reset.
 	 */
 	codec->s_cfg.avail = false;
+
+	/* Allocate memory for the codec */
+	API_CALL(cd, XA_API_CMD_GET_MEMTABS_SIZE, 0, &mem_tabs_size, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_prepare() error %x: failed to get memtabs size",
+			 ret);
+		goto err;
+	}
+
+	cd->mem_tabs = codec_allocate_memory(dev, mem_tabs_size, 4);
+	if (!cd->mem_tabs) {
+		comp_err(dev, "cadence_codec_prepare() error: failed to allocate space for memtabs");
+		ret = -ENOMEM;
+		goto err;
+	} else {
+		comp_dbg(dev, "cadence_codec_prepare(): allocated %d bytes for memtabs",
+			 mem_tabs_size);
+	}
+
+	API_CALL(cd, XA_API_CMD_SET_MEMTABS_PTR, 0, cd->mem_tabs, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_prepare() error %x: failed to set memtabs",
+			ret);
+		codec_free_memory(dev, cd->mem_tabs);
+		goto err;
+	}
 
 	comp_dbg(dev, "cadence_codec_prepare() done");
 	return 0;
