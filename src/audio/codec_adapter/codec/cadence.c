@@ -48,6 +48,15 @@ int cadence_codec_init(struct comp_dev *dev)
 		codec_free_memory(dev, cd);
 		goto out;
 	}
+	cd->self = codec_allocate_memory(dev, obj_size, 0);
+	if (!cd->self) {
+		comp_err(dev, "cadence_codec_init(): failed to allocate space for lib object");
+		codec_free_memory(dev, cd);
+		goto out;
+	} else {
+		comp_dbg(dev, "cadence_codec_init(): allocated %d bytes for lib object",
+			 obj_size);
+	}
 
 	comp_dbg(dev, "cadence_codec_init() done");
 out:
