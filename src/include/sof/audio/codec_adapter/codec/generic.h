@@ -70,6 +70,15 @@ struct codec_memory {
 	struct codec_memory *next;
 };
 
+struct codec_processing_data {
+	uint32_t in_buff_size;
+	uint32_t out_buff_size;
+	uint32_t avail;
+	uint32_t produced;
+	void *in_buff;
+	void *out_buff;
+};
+
 struct codec_data {
 	enum codec_state state;
 	struct codec_config s_cfg; /**< setup config */
@@ -77,6 +86,7 @@ struct codec_data {
 	struct codec_interface *call;
 	void *private; /**< self object, memory tables etc here */
 	struct codec_memory *memory;
+	struct codec_processing_data cpd; /**< shared data comp <-> codec */
 };
 
 /* codec_adapter private, runtime data */

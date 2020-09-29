@@ -205,6 +205,15 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 	}
 
+	/* Prepare codec */
+	ret = codec_prepare(dev);
+	if (ret) {
+		comp_err(dev, "codec_adapter_prepare() error %x: codec prepare failed",
+			 ret);
+
+		return -EIO;
+	}
+
 	comp_info(dev, "codec_adapter_prepare() done");
 	cd->state = PP_STATE_PREPARED;
 
