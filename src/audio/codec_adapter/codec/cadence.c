@@ -19,6 +19,7 @@ int cadence_codec_init(struct comp_dev *dev)
 	int ret;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = NULL;
+	uint32_t obj_size;
 
 	comp_dbg(dev, "cadence_codec_init() start");
 
@@ -36,6 +37,13 @@ int cadence_codec_init(struct comp_dev *dev)
 		 XA_CMD_TYPE_LIB_NAME, cd->name, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init() error %x: failed to get lib name",
+			 ret);
+		codec_free_memory(dev, cd);
+		goto out;
+	}
+	API_CALL(cd, XA_API_CMD_GET_API_SIZE, 0, &obj_size, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_init() error %x: failed to get lib object size",
 			 ret);
 		codec_free_memory(dev, cd);
 		goto out;
