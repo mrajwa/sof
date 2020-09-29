@@ -52,6 +52,12 @@ struct ca_config {
 	uint32_t channels;
 };
 
+struct codec_param {
+	uint32_t id;
+	uint32_t size;
+	int32_t data[];
+};
+
 struct codec_config {
 	size_t size;
 	bool avail;
