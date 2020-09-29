@@ -278,6 +278,14 @@ int cadence_codec_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_PROCESS, NULL, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_prepare() error %x: failed to initialize codec",
+			 ret);
+		codec_free_memory(dev, cd->mem_tabs);
+		goto err;
+	}
+
 	comp_dbg(dev, "cadence_codec_prepare() done");
 	return 0;
 err:
