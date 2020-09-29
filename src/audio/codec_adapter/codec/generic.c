@@ -218,3 +218,36 @@ static int validate_config(struct codec_config *cfg)
 	//TODO: validation of codec specifig setup config
 	return 0;
 }
+
+int codec_prepare(struct comp_dev *dev)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint32_t codec_id = cd->ca_config.codec_id;
+	struct codec_data *codec = &cd->codec;
+
+	comp_dbg(dev, "codec_prepare() start");
+
+	if (cd->codec.state == CODEC_PREPARED)
+		return 0;
+	if (cd->codec.state < CODEC_INITIALIZED)
+		return -EPERM;
+
+	ret = codec->call->prepare(dev);
+	if (ret) {
+		comp_err(dev, "codec_prepare() error %d: codec specific prepare failed, codec_id %x",
+			 ret, codec_id);
+		goto end;
+	}
+
+	codec->s_cfg.avail = false;
+	codec->r_cfg.avail = false;
+	codec->r_cfg.data = NULL;
+	if (codec->r_cfg.data)
+		rfree(codec->r_cfg.data);
+
+	codec->state = CODEC_PREPARED;
+	comp_dbg(dev, "codec_prepare() done");
+end:
+	return ret;
+}
