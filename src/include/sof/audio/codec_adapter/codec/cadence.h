@@ -42,5 +42,6 @@ struct cadence_codec_data {
 /* Codec interfaces							     */
 /*****************************************************************************/
 int cadence_codec_init(struct comp_dev *dev);
+int cadence_codec_prepare(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CADENCE_CODEC__ */

@@ -22,6 +22,7 @@
 struct codec_interface {
 	uint32_t id;
 	int (*init)(struct comp_dev *dev);
+	int (*prepare)(struct comp_dev *dev);
 };
 
 enum codec_cfg_type {
@@ -77,6 +78,8 @@ struct comp_data {
 	enum ca_state state; /**< current state of codec_adapter */
 	struct ca_config ca_config;
 	struct codec_data codec; /**< codec private data */
+	struct comp_buffer *ca_sink;
+	struct comp_buffer *ca_source;
 };
 
 /*****************************************************************************/
@@ -88,5 +91,6 @@ int codec_init(struct comp_dev *dev);
 void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 			    uint32_t alignment);
 int codec_free_memory(struct comp_dev *dev, void *ptr);
+int codec_prepare(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */
