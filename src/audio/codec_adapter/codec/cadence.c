@@ -107,6 +107,108 @@ ret:
 	return ret;
 }
 
+static int init_memory_tables(struct comp_dev *dev)
+{
+	int ret, no_mem_tables, i, mem_type, mem_size, mem_alignment;
+	void *ptr, *scratch, *persistent;
+	struct codec_data *codec = comp_get_codec(dev);
+	struct cadence_codec_data *cd = codec->private;
+
+	scratch = persistent = NULL;
+
+	/* Calculate the size of all memory blocks required */
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_POST_CONFIG_PARAMS,
+		 NULL, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "init_memory_tables() error %x: failed to calculate memory blocks size",
+			 ret);
+		goto err;
+	}
+
+	/* Get number of memory tables */
+	API_CALL(cd, XA_API_CMD_GET_N_MEMTABS, 0, &no_mem_tables, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "init_memory_tables() error %x: failed to get number of memory tables",
+			 ret);
+		goto err;
+	}
+
+	/* Initialize each memory table */
+	for (i = 0; i < no_mem_tables; i++) {
+		API_CALL(cd, XA_API_CMD_GET_MEM_INFO_TYPE, i, &mem_type, ret);
+		if (ret != LIB_NO_ERROR) {
+			comp_err(dev, "init_memory_tables() error %x: failed to get mem. type info of id %d out of %d",
+				 ret, i, no_mem_tables);
+			goto err;
+		}
+
+		API_CALL(cd, XA_API_CMD_GET_MEM_INFO_SIZE, i, &mem_size, ret);
+		if (ret != LIB_NO_ERROR) {
+			comp_err(dev, "init_memory_tables() error %x: failed to get mem. size for mem. type %d",
+				 ret, mem_type);
+			goto err;
+		}
+
+		API_CALL(cd, XA_API_CMD_GET_MEM_INFO_ALIGNMENT, i, &mem_alignment, ret);
+		if (ret != LIB_NO_ERROR) {
+			comp_err(dev, "init_memory_tables() error %x: failed to get mem. alignment of mem. type %d",
+				 ret, mem_type);
+			goto err;
+		}
+		ptr = codec_allocate_memory(dev, mem_size, mem_alignment);
+		if (!ptr) {
+			comp_err(dev, "init_memory_tables() error %x: failed to allocate memory for %d",
+				 ret, mem_type);
+			ret = -EINVAL;
+			goto err;
+		}
+
+		API_CALL(cd, XA_API_CMD_SET_MEM_PTR, i, ptr, ret);
+		if (ret != LIB_NO_ERROR) {
+			comp_err(dev, "init_memory_tables() error %x: failed to set memory pointer for %d",
+				 ret, mem_type);
+			goto err;
+		}
+
+		switch ((unsigned int)mem_type) {
+		case XA_MEMTYPE_SCRATCH:
+			scratch = ptr;
+			break;
+		case XA_MEMTYPE_PERSIST:
+			persistent = ptr;
+			break;
+		case XA_MEMTYPE_INPUT:
+			codec->cpd.in_buff = ptr;
+			codec->cpd.in_buff_size = mem_size;
+			break;
+		case XA_MEMTYPE_OUTPUT:
+			codec->cpd.out_buff = ptr;
+			codec->cpd.out_buff_size = mem_size;
+			break;
+		default:
+			comp_err(dev, "init_memory_tables() error %x: unrecognized memory type!",
+				 mem_type);
+			ret = -EINVAL;
+			goto err;
+		}
+
+		comp_dbg(dev, "init_memory_tables: allocated memory of %d bytes and alignment %d for mem. type %d",
+			 mem_size, mem_alignment, mem_type);
+	}
+
+	return 0;
+err:
+	if (scratch)
+		codec_free_memory(dev, scratch);
+	if (persistent)
+		codec_free_memory(dev, persistent);
+	if (codec->cpd.in_buff)
+		codec_free_memory(dev, codec->cpd.in_buff);
+	if (codec->cpd.out_buff)
+		codec_free_memory(dev, codec->cpd.out_buff);
+	return ret;
+}
+
 int cadence_codec_prepare(struct comp_dev *dev)
 {
 	int ret, mem_tabs_size;
@@ -124,7 +226,7 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	}
 
 	if (!codec->s_cfg.avail && !codec->s_cfg.size) {
-		comp_err(dev, "cadence_codec_prepare() no setup configuration available!");
+		comp_err(dev, "cadnece_codec_prepare() no setup configuration available!");
 		ret = -EIO;
 		goto err;
 	} else if (!codec->s_cfg.avail) {
@@ -164,6 +266,14 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_prepare() error %x: failed to set memtabs",
 			ret);
+		codec_free_memory(dev, cd->mem_tabs);
+		goto err;
+	}
+
+	ret = init_memory_tables(dev);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_prepare() error %x: failed to init memory tables",
+			 ret);
 		codec_free_memory(dev, cd->mem_tabs);
 		goto err;
 	}
