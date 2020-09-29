@@ -77,6 +77,8 @@ struct comp_data {
 	enum ca_state state; /**< current state of codec_adapter */
 	struct ca_config ca_config;
 	struct codec_data codec; /**< codec private data */
+	struct comp_buffer *ca_sink;
+	struct comp_buffer *ca_source;
 };
 
 /*****************************************************************************/

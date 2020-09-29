@@ -166,11 +166,57 @@ end:
 	return ret;
 }
 
+/*
+ * \brief Prepare a codec adapter component.
+ * \param[in] dev - component device pointer.
+ *
+ * \return integer representing either:
+ *	0 - success
+ *	value < 0 - failure.
+ */
+static int codec_adapter_prepare(struct comp_dev *dev)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_info(dev, "codec_adapter_prepare() start");
+
+	/* Init sink & source buffers */
+	cd->ca_sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+				      source_list);
+	cd->ca_source = list_first_item(&dev->bsource_list, struct comp_buffer,
+					sink_list);
+
+	if (!cd->ca_source) {
+		comp_err(dev, "codec_adapter_prepare(): source buffer not found");
+		return -EINVAL;
+	} else if (!cd->ca_sink) {
+		comp_err(dev, "codec_adapter_prepare(): sink buffer not found");
+		return -EINVAL;
+	}
+
+	/* Are we already prepared? */
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET) {
+		comp_warn(dev, "codec_adapter_prepare(): codec_adapter has already been prepared");
+		return PPL_STATUS_PATH_STOP;
+	}
+
+	comp_info(dev, "codec_adapter_prepare() done");
+	cd->state = PP_STATE_PREPARED;
+
+	return 0;
+}
+
 static const struct comp_driver comp_codec_adapter = {
 	.type = SOF_COMP_NONE,
 	.uid = SOF_RT_UUID(ca_uuid),
 	.tctx = &ca_tr,
 	.ops = {
 		.create = codec_adapter_new,
+		.prepare = codec_adapter_prepare,
 	},
 };
