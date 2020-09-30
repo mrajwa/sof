@@ -24,6 +24,7 @@ struct codec_interface {
 	int (*init)(struct comp_dev *dev);
 	int (*prepare)(struct comp_dev *dev);
 	int (*process)(struct comp_dev *dev);
+	int (*apply_config)(struct comp_dev *dev);
 };
 
 enum codec_cfg_type {
@@ -111,5 +112,6 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 int codec_free_memory(struct comp_dev *dev, void *ptr);
 int codec_prepare(struct comp_dev *dev);
 int codec_process(struct comp_dev *dev);
+int codec_apply_runtime_config(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */

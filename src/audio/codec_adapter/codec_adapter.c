@@ -408,6 +408,23 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 			} else {
 				comp_dbg(dev, "ca_set_params() load of runtime config done.");
 			}
+
+			if (cd->state >= PP_STATE_PREPARED) {
+				/* We are already prepared so we can apply runtime
+				 * config right away.
+				 */
+				ret = codec_apply_runtime_config(dev);
+				if (ret) {
+					comp_err(dev, "ca_set_params() error %x: codec runtime config apply failed",
+						 ret);
+					goto done;
+				}  else {
+					comp_dbg(dev, "ca_set_params() apply of runtime config done.");
+				}
+			} else {
+				cd->codec.r_cfg.avail = true;
+			}
+
 			break;
 		default:
 			comp_err(dev, "ca_set_params(): error: unknown config type.");
