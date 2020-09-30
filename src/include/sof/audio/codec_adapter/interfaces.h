@@ -25,6 +25,7 @@ static struct codec_interface interfaces[] = {
 		.prepare = cadence_codec_prepare,
 		.process = cadence_codec_process,
 		.apply_config = cadence_codec_apply_config,
+		.reset = cadence_codec_reset,
 	},
 };
 
