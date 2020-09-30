@@ -324,6 +324,33 @@ end:
 	return ret;
 }
 
+/* Used to pass standard and bespoke commands (with data) to component */
+static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
+			     int max_data_size)
+{
+	int ret;
+
+	comp_info(dev, "codec_adapter_cmd() %d start", cmd);
+
+	switch (cmd) {
+	case COMP_CMD_SET_DATA:
+		comp_warn(dev, "codec_adapter_cmd() set_data not implemented yet.");
+		ret = 0;
+		break;
+	case COMP_CMD_GET_DATA:
+		comp_warn(dev, "codec_adapter_cmd() get_data not implemented yet.");
+		ret = -ENODATA;
+		break;
+	default:
+		comp_err(dev, "codec_adapter_cmd() error: unknown command");
+		ret = -EINVAL;
+		break;
+	}
+
+	comp_info(dev, "codec_adapter_cmd() done");
+	return ret;
+}
+
 static const struct comp_driver comp_codec_adapter = {
 	.type = SOF_COMP_NONE,
 	.uid = SOF_RT_UUID(ca_uuid),
@@ -333,6 +360,7 @@ static const struct comp_driver comp_codec_adapter = {
 		.prepare = codec_adapter_prepare,
 		.params = codec_adapter_params,
 		.copy = codec_adapter_copy,
+		.cmd = codec_adapter_cmd,
 	},
 };
 
