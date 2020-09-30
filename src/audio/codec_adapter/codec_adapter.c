@@ -530,6 +530,19 @@ static int codec_adapter_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
+static int codec_adapter_reset(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): resetting");
+
+	cd->state = PP_STATE_CREATED;
+
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): done");
+
+	return comp_set_state(dev, COMP_TRIGGER_RESET);
+}
+
 static const struct comp_driver comp_codec_adapter = {
 	.type = SOF_COMP_NONE,
 	.uid = SOF_RT_UUID(ca_uuid),
@@ -541,6 +554,7 @@ static const struct comp_driver comp_codec_adapter = {
 		.copy = codec_adapter_copy,
 		.cmd = codec_adapter_cmd,
 		.trigger = codec_adapter_trigger,
+		.reset = codec_adapter_reset,
 	},
 };
 
