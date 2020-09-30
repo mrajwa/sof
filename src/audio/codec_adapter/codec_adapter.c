@@ -230,6 +230,90 @@ static int codec_adapter_params(struct comp_dev *dev,
 	return 0;
 }
 
+static void codec_adapter_copy_to_lib(const struct audio_stream *source,
+				      void *lib_buff, size_t bytes)
+{
+	uint32_t head_size = MIN(bytes, audio_stream_bytes_without_wrap(source,
+				source->r_ptr));
+	uint32_t tail_size = bytes - head_size;
+
+	memcpy(lib_buff, source->r_ptr, head_size);
+	if (tail_size)
+		memcpy((char *)lib_buff + head_size,
+		       audio_stream_wrap(source,
+					 (char *)source->r_ptr + head_size),
+					 tail_size);
+}
+
+static void codec_adapter_copy_from_lib_to_sink(const void *source,
+						struct audio_stream *sink,
+						size_t bytes)
+{
+	uint32_t head_size = MIN(bytes, audio_stream_bytes_without_wrap(sink,
+				sink->w_ptr));
+	uint32_t tail_size = bytes - head_size;
+
+	memcpy(sink->w_ptr, source, head_size);
+	if (tail_size)
+		memcpy(audio_stream_wrap(sink, (char *)sink->w_ptr + head_size),
+		       (char *)source + head_size,
+		       tail_size);
+}
+
+static int codec_adapter_copy(struct comp_dev *dev)
+{
+	int ret = 0;
+	uint32_t bytes_to_process, processed = 0;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_data *codec = &cd->codec;
+	struct comp_buffer *source = cd->ca_source;
+	struct comp_buffer *sink = cd->ca_sink;
+	uint32_t codec_buff_size = codec->cpd.in_buff_size;
+	struct comp_copy_limits cl;
+
+	comp_get_copy_limits_with_lock(source, sink, &cl);
+	bytes_to_process = cl.frames * cl.source_frame_bytes;
+
+	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, sink free: %d source avail %d",
+		 codec_buff_size, sink->stream.free, source->stream.avail);
+
+	while (bytes_to_process) {
+		/* Proceed only if we have enough data to fill the lib buffer
+		 * completely. If you don't fill whole buffer
+		 * the lib won't process it.
+		 */
+		if (bytes_to_process < codec_buff_size) {
+			comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
+				 processed, bytes_to_process);
+			break;
+		}
+
+		codec_adapter_copy_to_lib(&source->stream,
+					  codec->cpd.in_buff,
+					  codec_buff_size);
+		buffer_invalidate(source, codec_buff_size);
+		codec->cpd.avail = codec_buff_size;
+		//TODO: call codec processing function here
+		codec_adapter_copy_from_lib_to_sink(codec->cpd.out_buff,
+						    &sink->stream,
+						    codec->cpd.produced);
+		buffer_writeback(sink, codec->cpd.produced);
+
+		bytes_to_process -= codec->cpd.produced;
+		processed += codec->cpd.produced;
+	}
+
+	if (!processed) {
+		comp_dbg(dev, "codec_adapter_copy(): nothing processed in this call");
+		goto end;
+	}
+
+	comp_update_buffer_produce(sink, processed);
+	comp_update_buffer_consume(source, processed);
+end:
+	return ret;
+}
+
 static const struct comp_driver comp_codec_adapter = {
 	.type = SOF_COMP_NONE,
 	.uid = SOF_RT_UUID(ca_uuid),
@@ -238,6 +322,7 @@ static const struct comp_driver comp_codec_adapter = {
 		.create = codec_adapter_new,
 		.prepare = codec_adapter_prepare,
 		.params = codec_adapter_params,
+		.copy = codec_adapter_copy,
 	},
 };
 
