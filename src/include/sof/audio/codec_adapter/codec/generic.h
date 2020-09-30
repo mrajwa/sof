@@ -97,6 +97,7 @@ struct comp_data {
 	struct codec_data codec; /**< codec private data */
 	struct comp_buffer *ca_sink;
 	struct comp_buffer *ca_source;
+	void *runtime_params;
 };
 
 /*****************************************************************************/
