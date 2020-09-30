@@ -344,3 +344,8 @@ err:
 	return ret;
 
 }
+
+int cadence_codec_apply_config(struct comp_dev *dev)
+{
+	return apply_config(dev, CODEC_CFG_RUNTIME);
+}
