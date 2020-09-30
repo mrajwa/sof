@@ -312,3 +312,25 @@ int codec_apply_runtime_config(struct comp_dev *dev)
 out:
 	return ret;
 }
+
+int codec_reset(struct comp_dev *dev)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_data *codec = &cd->codec;
+
+	ret = codec->call->reset(dev);
+	if (ret) {
+		comp_err(dev, "codec_apply_config() error %d: codec specific .reset() failed for codec_id %x",
+			  ret, cd->ca_config.codec_id);
+		return ret;
+	}
+
+	codec->r_cfg.avail = false;
+	codec->r_cfg.size = 0;
+	rfree(codec->r_cfg.data);
+
+	codec->state = CODEC_PREPARED;
+
+	return 0;
+}
