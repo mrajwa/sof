@@ -324,18 +324,75 @@ end:
 	return ret;
 }
 
+static int ca_set_binary_data(struct comp_dev *dev,
+			      struct sof_ipc_ctrl_data *cdata)
+{
+	int ret;
+
+	comp_info(dev, "ca_set_binary_data() start, data type %d",
+		  cdata->data->type);
+
+	switch (cdata->data->type) {
+	case CODEC_CFG_SETUP:
+	case CODEC_CFG_RUNTIME:
+		//TODO:
+		comp_warn(dev, "ca_set_binary_data() set_data not implemented yet.");
+		ret = -EIO;
+		break;
+	default:
+		comp_err(dev, "ca_set_binary_data() error: unknown binary data type");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
+				       struct sof_ipc_ctrl_data *cdata)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_info(dev, "codec_adapter_ctrl_set_data() start, state %d, cmd %d",
+		  cd->state, cdata->cmd);
+
+	/* Check version from ABI header */
+	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
+		comp_err(dev, "codec_adapter_ctrl_set_data(): ABI mismatch!");
+		return -EINVAL;
+	}
+
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_ENUM:
+		//TODO
+		ret = -EIO;
+		break;
+	case SOF_CTRL_CMD_BINARY:
+		ret = ca_set_binary_data(dev, cdata);
+		break;
+	default:
+		comp_err(dev, "codec_adapter_ctrl_set_data error: unknown set data command");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 /* Used to pass standard and bespoke commands (with data) to component */
 static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 			     int max_data_size)
 {
 	int ret;
+	struct sof_ipc_ctrl_data *cdata = data;
 
 	comp_info(dev, "codec_adapter_cmd() %d start", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
 		comp_warn(dev, "codec_adapter_cmd() set_data not implemented yet.");
-		ret = 0;
+		ret = codec_adapter_ctrl_set_data(dev, cdata);
 		break;
 	case COMP_CMD_GET_DATA:
 		comp_warn(dev, "codec_adapter_cmd() get_data not implemented yet.");
