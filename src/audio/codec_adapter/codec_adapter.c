@@ -382,6 +382,43 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 
 	ret = memcpy_s(dst, size - offset, src, cdata->num_elems);
 	assert(!ret);
+
+	/* Config has been copied now we can load & apply it depending on
+	 * codec state.
+	 */
+	if (!cdata->elems_remaining) {
+		switch (type) {
+		case CODEC_CFG_SETUP:
+			ret = load_setup_config(dev, cd->runtime_params, size);
+			if (ret) {
+				comp_err(dev, "ca_set_params(): error %d: load of setup config failed.",
+					 ret);
+			} else {
+				comp_dbg(dev, "ca_set_params() load of setup config done.");
+			}
+
+			break;
+		case CODEC_CFG_RUNTIME:
+			ret = codec_load_config(dev, cd->runtime_params, size,
+						CODEC_CFG_RUNTIME);
+			if (ret) {
+				comp_err(dev, "ca_set_params() error %d: load of runtime config failed.",
+					 ret);
+				goto done;
+			} else {
+				comp_dbg(dev, "ca_set_params() load of runtime config done.");
+			}
+			break;
+		default:
+			comp_err(dev, "ca_set_params(): error: unknown config type.");
+			break;
+		}
+	}
+done:
+	if (cd->runtime_params)
+		rfree(cd->runtime_params);
+	cd->runtime_params = NULL;
+	return ret;
 end:
 	return ret;
 }
