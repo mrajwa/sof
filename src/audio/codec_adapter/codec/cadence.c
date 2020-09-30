@@ -307,3 +307,40 @@ int cadence_codec_prepare(struct comp_dev *dev)
 err:
 	return ret;
 }
+
+int cadence_codec_process(struct comp_dev *dev)
+{
+	int ret;
+	struct codec_data *codec = comp_get_codec(dev);
+	struct cadence_codec_data *cd = codec->private;
+
+	comp_dbg(dev, "cadence_codec_process() start");
+
+	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->cpd.avail, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_process() error %x: failed to set size of input data",
+			 ret);
+		goto err;
+	}
+
+	API_CALL(cd, XA_API_CMD_EXECUTE, XA_CMD_TYPE_DO_EXECUTE, NULL, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_process() error %x: processing failed",
+			 ret);
+		goto err;
+	}
+
+	API_CALL(cd, XA_API_CMD_GET_OUTPUT_BYTES, 0, &codec->cpd.produced, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_process() error %x: could not get produced bytes",
+			 ret);
+		goto err;
+	}
+
+	comp_dbg(dev, "cadence_codec_process() done");
+
+	return 0;
+err:
+	return ret;
+
+}
