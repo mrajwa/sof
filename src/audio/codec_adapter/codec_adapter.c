@@ -522,6 +522,14 @@ static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 	return ret;
 }
 
+static int codec_adapter_trigger(struct comp_dev *dev, int cmd)
+{
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_trigger(): component got trigger cmd %x",
+		     cmd);
+
+	return comp_set_state(dev, cmd);
+}
+
 static const struct comp_driver comp_codec_adapter = {
 	.type = SOF_COMP_NONE,
 	.uid = SOF_RT_UUID(ca_uuid),
@@ -532,6 +540,7 @@ static const struct comp_driver comp_codec_adapter = {
 		.params = codec_adapter_params,
 		.copy = codec_adapter_copy,
 		.cmd = codec_adapter_cmd,
+		.trigger = codec_adapter_trigger,
 	},
 };
 
