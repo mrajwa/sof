@@ -552,11 +552,16 @@ static int codec_adapter_reset(struct comp_dev *dev)
 
 static void codec_adapter_free(struct comp_dev *dev)
 {
+	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): start");
 
-	//TODO: free codec memory
+	ret = codec_free(dev);
+	if (ret) {
+		comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): error %d, codec reset has failed",
+			     ret);
+	}
 	rfree(cd);
 	rfree(dev);
 
