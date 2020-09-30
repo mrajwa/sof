@@ -293,7 +293,17 @@ static int codec_adapter_copy(struct comp_dev *dev)
 					  codec_buff_size);
 		buffer_invalidate(source, codec_buff_size);
 		codec->cpd.avail = codec_buff_size;
-		//TODO: call codec processing function here
+		ret = codec_process(dev);
+		if (ret) {
+			comp_err(dev, "codec_adapter_copy() error %x: lib processing failed",
+				 ret);
+			break;
+		} else if (codec->cpd.produced == 0) {
+			/* skipping as lib has not produced anything */
+			comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
+				 ret);
+			break;
+		}
 		codec_adapter_copy_from_lib_to_sink(codec->cpd.out_buff,
 						    &sink->stream,
 						    codec->cpd.produced);
