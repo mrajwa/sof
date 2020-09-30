@@ -550,6 +550,19 @@ static int codec_adapter_reset(struct comp_dev *dev)
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
+static void codec_adapter_free(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): start");
+
+	//TODO: free codec memory
+	rfree(cd);
+	rfree(dev);
+
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): component memory freed");
+}
+
 static const struct comp_driver comp_codec_adapter = {
 	.type = SOF_COMP_NONE,
 	.uid = SOF_RT_UUID(ca_uuid),
@@ -562,6 +575,7 @@ static const struct comp_driver comp_codec_adapter = {
 		.cmd = codec_adapter_cmd,
 		.trigger = codec_adapter_trigger,
 		.reset = codec_adapter_reset,
+		.free = codec_adapter_free,
 	},
 };
 
