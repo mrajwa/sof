@@ -324,6 +324,68 @@ end:
 	return ret;
 }
 
+static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
+			 enum codec_cfg_type type)
+{
+	int ret;
+	char *dst, *src;
+	static uint32_t size;
+	uint32_t offset;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "ca_set_params(): start: num_of_elem %d, elem remain %d msg_index %u",
+		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
+
+	/* Stage 1 verify input params & allocate memory for the config blob */
+	if (cdata->msg_index == 0) {
+		size = cdata->num_elems + cdata->elems_remaining;
+		/* Check that there is no work-in-progress on previous request */
+		if (cd->runtime_params) {
+			comp_err(dev, "ca_set_params() error: busy with previous request");
+			ret = -EBUSY;
+			goto end;
+		} else if (!size) {
+			comp_err(dev, "ca_set_params() error: no configuration size %d",
+				 size);
+			//TODO: return -EINVAL. This is temporary until driver fixes its issue
+			ret = 0;
+			goto end;
+		} else if (size > MAX_BLOB_SIZE) {
+			comp_err(dev, "ca_set_params() error: blob size is too big cfg size %d, allowed %d",
+				 size, MAX_BLOB_SIZE);
+			ret = -EINVAL;
+			goto end;
+		} else if (type != CODEC_CFG_SETUP && type != CODEC_CFG_RUNTIME) {
+			comp_err(dev, "ca_set_params() error: unknown config type");
+			ret = -EINVAL;
+			goto end;
+		}
+
+		/* Allocate buffer for new params */
+		cd->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		if (!cd->runtime_params) {
+			comp_err(dev, "ca_set_params(): space allocation for new params failed");
+			ret = -ENOMEM;
+			goto end;
+		}
+
+		memset(cd->runtime_params, 0, size);
+	} else if (!cd->runtime_params) {
+		comp_err(dev, "ca_set_params() error: no memory available for runtime params in consecutive load");
+		ret = -EIO;
+		goto end;
+	}
+
+	offset = size - (cdata->num_elems + cdata->elems_remaining);
+	dst = (char *)cd->runtime_params + offset;
+	src = (char *)cdata->data->data;
+
+	ret = memcpy_s(dst, size - offset, src, cdata->num_elems);
+	assert(!ret);
+end:
+	return ret;
+}
+
 static int ca_set_binary_data(struct comp_dev *dev,
 			      struct sof_ipc_ctrl_data *cdata)
 {
@@ -335,9 +397,7 @@ static int ca_set_binary_data(struct comp_dev *dev,
 	switch (cdata->data->type) {
 	case CODEC_CFG_SETUP:
 	case CODEC_CFG_RUNTIME:
-		//TODO:
-		comp_warn(dev, "ca_set_binary_data() set_data not implemented yet.");
-		ret = -EIO;
+		ret = ca_set_params(dev, cdata, cdata->data->type);
 		break;
 	default:
 		comp_err(dev, "ca_set_binary_data() error: unknown binary data type");
