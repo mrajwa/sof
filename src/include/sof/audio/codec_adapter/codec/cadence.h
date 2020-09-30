@@ -46,5 +46,6 @@ int cadence_codec_prepare(struct comp_dev *dev);
 int cadence_codec_process(struct comp_dev *dev);
 int cadence_codec_apply_config(struct comp_dev *dev);
 int cadence_codec_reset(struct comp_dev *dev);
+int cadence_codec_free(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CADENCE_CODEC__ */
