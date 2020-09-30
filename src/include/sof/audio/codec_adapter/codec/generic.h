@@ -26,6 +26,7 @@ struct codec_interface {
 	int (*process)(struct comp_dev *dev);
 	int (*apply_config)(struct comp_dev *dev);
 	int (*reset)(struct comp_dev *dev);
+	int (*free)(struct comp_dev *dev);
 };
 
 enum codec_cfg_type {
@@ -115,5 +116,6 @@ int codec_prepare(struct comp_dev *dev);
 int codec_process(struct comp_dev *dev);
 int codec_apply_runtime_config(struct comp_dev *dev);
 int codec_reset(struct comp_dev *dev);
+int codec_free(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */

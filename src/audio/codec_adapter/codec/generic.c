@@ -334,3 +334,29 @@ int codec_reset(struct comp_dev *dev)
 
 	return 0;
 }
+
+int codec_free(struct comp_dev *dev)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_data *codec = &cd->codec;
+
+	ret = codec->call->free(dev);
+	if (ret) {
+		comp_warn(dev, "codec_apply_config() error %d: codec specific .free() failed for codec_id %x",
+			  ret, cd->ca_config.codec_id);
+	}
+	/* Free all memory shared by codec_adapter & codec */
+	codec->s_cfg.avail = false;
+	codec->s_cfg.size = 0;
+	codec->r_cfg.avail = false;
+	codec->r_cfg.size = 0;
+	rfree(codec->r_cfg.data);
+	rfree(codec->s_cfg.data);
+	if (cd->runtime_params)
+		rfree(cd->runtime_params);
+
+	codec->state = CODEC_DISABLED;
+
+	return ret;
+}
