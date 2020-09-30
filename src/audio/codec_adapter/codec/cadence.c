@@ -355,3 +355,9 @@ int cadence_codec_reset(struct comp_dev *dev)
 	//Nothing to do
 	return 0;
 }
+
+int cadence_codec_free(struct comp_dev *dev)
+{
+	//Nothing to do
+	return 0;
+}
