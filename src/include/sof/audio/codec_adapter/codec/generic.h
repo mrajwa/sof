@@ -70,8 +70,7 @@ struct codec_config {
 
 struct codec_memory {
 	void *ptr;
-	struct codec_memory *prev;
-	struct codec_memory *next;
+	struct list_item mem_list; /**< memory allocated by codec */
 };
 
 struct codec_processing_data {
@@ -89,7 +88,7 @@ struct codec_data {
 	struct codec_config r_cfg; /**< runtime config */
 	struct codec_interface *call;
 	void *private; /**< self object, memory tables etc here */
-	struct codec_memory *memory;
+	struct codec_memory memory;
 	struct codec_processing_data cpd; /**< shared data comp <-> codec */
 };
 

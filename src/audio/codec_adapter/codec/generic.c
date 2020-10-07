@@ -158,16 +158,7 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 	}
 	/* Store reference to allocated memory */
 	container->ptr = ptr;
-	if (!cd->codec.memory) {
-		cd->codec.memory = container;
-		container->prev = NULL;
-		container->next = NULL;
-	} else {
-		container->prev = cd->codec.memory;
-		container->next = NULL;
-		cd->codec.memory->next = container;
-		cd->codec.memory = container;
-	}
+	list_item_prepend(&container->mem_list, &cd->codec.memory.mem_list);
 
 	return ptr;
 }
@@ -175,37 +166,24 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 int codec_free_memory(struct comp_dev *dev, void *ptr)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_memory *mem = cd->codec.memory;
-	struct codec_memory *_mem;
+	struct codec_memory *mem;
+	struct list_item *mem_List;
+	struct list_item *_mem_List;
 
 	if (!ptr) {
 		comp_err(dev, "codec_free_memory: error: NULL pointer passed.");
 		return -EINVAL;
 	}
 	/* Find which container keeps this memory */
-	do {
+	list_for_item_safe(mem_List, _mem_List, &cd->codec.memory.mem_list) {
+		mem = container_of(mem_List, struct codec_memory, mem_list);
 		if (mem->ptr == ptr) {
-			rfree(ptr);
-			mem->ptr = NULL;
-			if (mem->prev && mem->next) {
-				mem->prev->next = mem->next;
-				mem->next->prev = mem->prev;
-				_mem = mem->prev;
-				rfree(mem);
-				mem = _mem;
-			} else if (mem->prev) {
-				mem->prev->next = NULL;
-				cd->codec.memory = mem->prev;
-				rfree(mem);
-			} else {
-				rfree(mem);
-				cd->codec.memory = NULL;
-			}
-
+			rfree(mem->ptr);
+			list_item_del(&mem->mem_list);
+			rfree(mem);
 			return 0;
 		}
-		mem = mem->prev;
-	} while (mem);
+	}
 
 	comp_err(dev, "codec_free_memory: error: could not find memory pointed by %p",
 		 (uint32_t)ptr);
@@ -243,6 +221,8 @@ int codec_prepare(struct comp_dev *dev)
 	codec->s_cfg.avail = false;
 	codec->r_cfg.avail = false;
 	codec->r_cfg.data = NULL;
+	list_init(&codec->memory.mem_list);
+
 	if (codec->r_cfg.data)
 		rfree(codec->r_cfg.data);
 
@@ -338,25 +318,17 @@ int codec_reset(struct comp_dev *dev)
 static void codec_free_all_memory(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_memory *mem = cd->codec.memory;
-	struct codec_memory *_mem;
+	struct codec_memory *mem;
+	struct list_item *mem_List;
+	struct list_item *_mem_List;
 
-	if (!mem)
-		return;
 	/* Find which container keeps this memory */
-	do {
-		if (mem->prev) {
-			_mem = mem->prev;
-			rfree(mem->ptr);
-			rfree(mem);
-			mem = _mem;
-		} else {
-			cd->codec.memory = NULL;
-			rfree(mem->ptr);
-			rfree(mem);
-			mem = NULL;
-		}
-	} while (mem);
+	list_for_item_safe(mem_List, _mem_List, &cd->codec.memory.mem_list) {
+		mem = container_of(mem_List, struct codec_memory, mem_list);
+		rfree(mem->ptr);
+		list_item_del(&mem->mem_list);
+		rfree(mem);
+	}
 }
 
 int codec_free(struct comp_dev *dev)
