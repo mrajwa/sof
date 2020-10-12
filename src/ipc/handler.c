@@ -456,12 +456,13 @@ static int ipc_glb_stream_message(uint32_t header)
 	case SOF_IPC_STREAM_PCM_FREE:
 		return ipc_stream_pcm_free(header);
 	case SOF_IPC_STREAM_TRIG_START:
-	case SOF_IPC_STREAM_TRIG_STOP:
 	case SOF_IPC_STREAM_TRIG_PAUSE:
-	case SOF_IPC_STREAM_TRIG_RELEASE:
 	case SOF_IPC_STREAM_TRIG_DRAIN:
-	case SOF_IPC_STREAM_TRIG_XRUN:
+	case SOF_IPC_STREAM_TRIG_RELEASE:
 		return ipc_stream_trigger(header);
+	case SOF_IPC_STREAM_TRIG_STOP:
+	case SOF_IPC_STREAM_TRIG_XRUN:
+		return 0;
 	case SOF_IPC_STREAM_POSITION:
 		return ipc_stream_position(header);
 	default:
