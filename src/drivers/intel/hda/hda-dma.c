@@ -300,6 +300,7 @@ static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
 		.channel = chan,
 		.elem = { .size = bytes },
 	};
+	static int i;
 
 	notifier_event(chan, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
@@ -309,6 +310,10 @@ static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
 		/* set BFPI to let host gateway know we have read size,
 		 * which will trigger next copy start.
 		 */
+		if (i++ > 10) {
+			tr_err(&hdma_tr, "RAJWA: skipping increase of BFPI pointers");
+			return;
+		}
 		hda_dma_inc_fp(chan, bytes);
 
 		/*
