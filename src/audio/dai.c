@@ -804,12 +804,18 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t samples;
 	int ret = 0;
 	uint32_t flags = 0;
+	int *debug = (void *)0x9e008000;
+	static int i;
+
+	*debug = 0xFEED;
+	*(debug+1) = i++;
 
 	comp_info(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
 	if (ret < 0) {
+		*(debug+2) = 0xAAAAAA;
 		dai_report_xrun(dev, 0);
 		return ret;
 	}
