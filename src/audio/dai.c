@@ -129,6 +129,8 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 
 	/* is our pipeline handling an XRUN ? */
 	if (dd->xrun) {
+		comp_info(dev, "RAJWA: we play silence!");
+		return;
 		/* make sure we only playback silence during an XRUN */
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 			/* fill buffer with silence */
