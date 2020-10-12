@@ -780,6 +780,8 @@ static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
 static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	int *debug = (void *)0x9e008000;
+	*(debug+3) = 0xBBBBBB;
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		comp_err(dev, "dai_report_xrun(): underrun due to no data available");

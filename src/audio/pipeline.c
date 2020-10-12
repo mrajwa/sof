@@ -1103,6 +1103,9 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	};
 	struct sof_ipc_stream_posn posn;
 	int ret;
+	int *debug = (void *)0x9e008000;
+	*(debug+4) = 0xCCCCCC;
+	return;
 
 	/* don't flood host */
 	if (p->xrun_bytes)
