@@ -803,7 +803,7 @@ static int dai_copy(struct comp_dev *dev)
 	int ret = 0;
 	uint32_t flags = 0;
 
-	comp_dbg(dev, "dai_copy()");
+	comp_info(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
@@ -819,6 +819,8 @@ static int dai_copy(struct comp_dev *dev)
 		src_samples = audio_stream_get_avail_samples(&buf->stream);
 		sink_samples = free_bytes / get_sample_bytes(dma_fmt);
 		samples = MIN(src_samples, sink_samples);
+		comp_info(dev, "RAJWA: dai_copy() src_samples: %d, sink_samples: %d",
+			  src_samples, sink_samples);
 	} else {
 		src_samples = avail_bytes / get_sample_bytes(dma_fmt);
 		sink_samples = audio_stream_get_free_samples(&buf->stream);
