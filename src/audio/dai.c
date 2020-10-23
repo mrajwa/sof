@@ -792,6 +792,7 @@ static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t dma_fmt = dd->dma_buffer->stream.frame_fmt;
+	uint32_t sample_size = get_sample_bytes(dma_fmt);
 	struct comp_buffer *buf = dd->local_buffer;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
@@ -801,7 +802,6 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t samples;
 	int ret = 0;
 	uint32_t flags = 0;
-
 	comp_dbg(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
@@ -816,10 +816,10 @@ static int dai_copy(struct comp_dev *dev)
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		src_samples = audio_stream_get_avail_samples(&buf->stream);
-		sink_samples = free_bytes / get_sample_bytes(dma_fmt);
+		sink_samples = free_bytes / sample_size;
 		samples = MIN(src_samples, sink_samples);
 	} else {
-		src_samples = avail_bytes / get_sample_bytes(dma_fmt);
+		src_samples = avail_bytes / sample_size;
 		sink_samples = audio_stream_get_free_samples(&buf->stream);
 		samples = MIN(src_samples, sink_samples);
 
@@ -828,9 +828,8 @@ static int dai_copy(struct comp_dev *dev)
 	 * in order to avoid high load spike which may led to delays
 	 * in data delivery and finally to data distortion.
 	 */
-	samples = MIN(samples, dd->period_bytes /
-		      get_sample_bytes(dma_fmt));
-	copy_bytes = samples * get_sample_bytes(dma_fmt);
+	samples = MIN(samples, dd->period_bytes / sample_size);
+	copy_bytes = samples * sample_size;
 
 	buffer_unlock(buf, flags);
 
