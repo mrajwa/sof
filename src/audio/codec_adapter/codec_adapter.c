@@ -225,8 +225,13 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 static int codec_adapter_params(struct comp_dev *dev,
 				    struct sof_ipc_stream_params *params)
 {
-	comp_dbg(dev, "codec_adapter_params(): codec_adapter doesn't support .params() method.");
+	int ret;
 
+	ret = comp_verify_params(dev, 0, params);
+	if (ret < 0) {
+		comp_err(dev, "codec_adapter_params(): comp_verify_params() failed.");
+		return ret;
+	}
 	return 0;
 }
 
