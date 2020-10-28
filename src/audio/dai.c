@@ -866,6 +866,7 @@ static int dai_copy(struct comp_dev *dev)
 			dai_comp_trigger_internal(dev, COMP_TRIGGER_STOP);
 			return ret;
 		}
+		copy_bytes = dd->dma_buffer->stream.size;
 	}
 
 	ret = dma_copy(dd->chan, copy_bytes, 0);
