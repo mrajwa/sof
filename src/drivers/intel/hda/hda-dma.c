@@ -411,9 +411,9 @@ static int hda_dma_enable_unlock(struct dma_chan_data *channel)
 	}
 
 	/* start link output transfer now */
-	/*if (channel->direction == DMA_DIR_MEM_TO_DEV &&
+	if (channel->direction == DMA_DIR_MEM_TO_DEV &&
 	    !(hda_chan->state & HDA_STATE_RELEASE))
-		hda_dma_inc_link_fp(channel, hda_chan->buffer_bytes);*/
+		hda_dma_inc_link_fp(channel, hda_chan->buffer_bytes);
 
 	hda_chan->state &= ~HDA_STATE_RELEASE;
 
