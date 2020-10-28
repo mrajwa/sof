@@ -1089,7 +1089,7 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 	}
 	spin_unlock_irq(&channel->dma->lock, flags);
 
-#if CONFIG_HW_LLI
+#if CONFIG_HW_LLI && 0
 	if (!(dma_reg_read(channel->dma, DW_DMA_CHAN_EN) &
 	      DW_CHAN(channel->index))) {
 		tr_err(&dwdma_tr, "dw_dma_get_data_size(): xrun detected");
