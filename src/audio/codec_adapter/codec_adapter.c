@@ -189,6 +189,8 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	cd->ca_source = list_first_item(&dev->bsource_list, struct comp_buffer,
 					sink_list);
 
+	comp_info(dev, "RAJWA: codec_adapter_prepare(): source size %d, sink size %d",
+		cd->ca_source->stream.size, cd->ca_sink->stream.size);
 	if (!cd->ca_source) {
 		comp_err(dev, "codec_adapter_prepare(): source buffer not found");
 		return -EINVAL;

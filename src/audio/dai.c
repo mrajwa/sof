@@ -501,7 +501,6 @@ static int dai_params(struct comp_dev *dev,
 	/* calculate frame size */
 	frame_size = get_frame_bytes(dconfig->frame_fmt,
 				     dd->local_buffer->stream.channels);
-
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
 	if (!period_bytes) {
@@ -509,11 +508,14 @@ static int dai_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	dd->period_bytes = period_bytes;
 
 	/* calculate DMA buffer size */
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
 
+	dd->period_bytes = period_bytes;
+	comp_info(dev, "RAJWA: format %d period bytes %d buffer_size %d", 
+		dconfig->frame_fmt, dd->period_bytes, buffer_size);
+	
 	/* alloc DMA buffer or change its size if exists */
 	if (dd->dma_buffer) {
 		err = buffer_set_size(dd->dma_buffer, buffer_size);
@@ -797,9 +799,9 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	uint32_t dma_fmt = dd->dma_buffer->stream.frame_fmt;
-	uint32_t sample_size = get_sample_bytes(dma_fmt);
 	struct comp_buffer *buf = dd->local_buffer;
+	uint32_t dma_fmt = buf->stream.frame_fmt;
+	uint32_t sample_size = get_sample_bytes(dma_fmt);
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -808,6 +810,7 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t samples;
 	int ret = 0;
 	uint32_t flags = 0;
+	
 	comp_dbg(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
@@ -848,7 +851,8 @@ static int dai_copy(struct comp_dev *dev)
 		if (dd->chan->status == COMP_STATE_ACTIVE)
 			comp_warn(dev, "dai_copy(): nothing to copy, data distortion may occur.");
 		else
-			comp_warn(dev, "dai_copy(): nothing to copy.");
+			comp_warn(dev, "dai_copy(): nothing to copy for stream: %d, direction %d.",
+				dd->stream_id, dev->direction);
 		return 0;
 	}
 	/* start DMA copy for playback streams only when we have gathered
@@ -858,7 +862,7 @@ static int dai_copy(struct comp_dev *dev)
 	 */
 	if (dd->chan->status != COMP_STATE_ACTIVE &&
 	    dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		if (src_samples * sample_size < dd->dma_buffer->stream.size)
+		if (src_samples * sample_size < buf->stream.size)
 			goto end;
 		ret = dma_start(dd->chan);
 		if (ret < 0) {
@@ -866,7 +870,6 @@ static int dai_copy(struct comp_dev *dev)
 			dai_comp_trigger_internal(dev, COMP_TRIGGER_STOP);
 			return ret;
 		}
-		goto end;
 	}
 
 	ret = dma_copy(dd->chan, copy_bytes, 0);
