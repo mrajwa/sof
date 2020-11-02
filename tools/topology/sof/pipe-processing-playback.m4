@@ -16,7 +16,7 @@ include(`bytecontrol.m4')
 ifdef(`PP_CORE',`', `define(`PP_CORE', 1)')
 # Post processing requires bigger buffers
 undefine(`DAI_PERIODS')
-define(`DAI_PERIODS', 4)
+define(`DAI_PERIODS', 8)
 
 #
 # Controls

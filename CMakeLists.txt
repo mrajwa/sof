@@ -181,6 +181,9 @@ target_link_libraries(sof PRIVATE sof_options)
 target_link_libraries(sof PRIVATE sof_ld_scripts)
 target_link_libraries(sof PRIVATE sof_ld_flags)
 target_link_libraries(sof PRIVATE sof_static_libraries)
+if(CONFIG_COMP_CODEC_ADAPTER)
+target_link_libraries(sof PRIVATE ${PROJECT_SOURCE_DIR}/xa_dap_vlldp.a)
+endif()
 
 sof_add_build_counter_rule()
 

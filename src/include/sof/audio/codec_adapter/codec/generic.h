@@ -183,6 +183,10 @@ struct comp_data {
 	struct comp_buffer *ca_sink;
 	struct comp_buffer *ca_source;
 	void *runtime_params;
+	uint32_t period_bytes;
+	uint32_t proc_start_th; /**< processing start threshold */
+	bool processing_allowed;
+	bool multi_proc; /**< Can we process more than one codec buffor in single period */
 };
 
 /*****************************************************************************/

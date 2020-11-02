@@ -180,6 +180,8 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_data *codec = &cd->codec;
+	uint32_t buff_periods;
 
 	comp_info(dev, "codec_adapter_prepare() start");
 
@@ -218,8 +220,32 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 		return -EIO;
 	}
 
+	/* Setup processing settings */
+	if (codec->cpd.in_buff_size != cd->period_bytes) {
+		cd->processing_allowed = false;
+
+		if (codec->cpd.in_buff_size > cd->period_bytes) {
+			cd->multi_proc = false;
+			buff_periods = (codec->cpd.in_buff_size % cd->period_bytes) ?
+				       (codec->cpd.in_buff_size / cd->period_bytes) + 2 : 
+				       (codec->cpd.in_buff_size / cd->period_bytes);
+		} else {
+			cd->multi_proc = true;
+			buff_periods = (cd->period_bytes % codec->cpd.in_buff_size) ?
+				       (cd->period_bytes / codec->cpd.in_buff_size) + 2 : 
+				       (cd->period_bytes / codec->cpd.in_buff_size);
+		}
+		
+		cd->proc_start_th = cd->period_bytes * buff_periods;
+	} else {
+		cd->processing_allowed = true;
+		cd->multi_proc = false;
+	}
+ 	
+
+ 	cd->state = PP_STATE_PREPARED;
+
 	comp_info(dev, "codec_adapter_prepare() done");
-	cd->state = PP_STATE_PREPARED;
 
 	return 0;
 }
@@ -228,12 +254,16 @@ static int codec_adapter_params(struct comp_dev *dev,
 				    struct sof_ipc_stream_params *params)
 {
 	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
 		comp_err(dev, "codec_adapter_params(): comp_verify_params() failed.");
 		return ret;
 	}
+
+	cd->period_bytes = params->sample_container_bytes * 
+			   params->channels * params->rate / 1000; 
 	return 0;
 }
 
@@ -294,10 +324,19 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	struct comp_copy_limits cl;
 
 	comp_get_copy_limits_with_lock(source, sink, &cl);
-	bytes_to_process = cl.frames * cl.source_frame_bytes;
+	bytes_to_process = cl.source_bytes;
 
-	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, sink free: %d source avail %d",
+	comp_info(dev, "codec_adapter_copy() start: codec_buff_size: %d, sink free: %d source avail %d",
 		 codec_buff_size, sink->stream.free, source->stream.avail);
+
+	if (!cd->processing_allowed) {
+		if (bytes_to_process < cd->proc_start_th) {
+			comp_info(dev, "codec_adapter: processing not allowed avail %d, start threshold %d",
+				  bytes_to_process, cd->proc_start_th);
+			goto end;
+		}
+		cd->processing_allowed = true;
+	}
 
 	while (bytes_to_process) {
 		/* Proceed only if we have enough data to fill the lib buffer
@@ -329,8 +368,10 @@ static int codec_adapter_copy(struct comp_dev *dev)
 						    codec->cpd.produced);
 		buffer_writeback(sink, codec->cpd.produced);
 
-		bytes_to_process -= codec->cpd.produced;
 		processed += codec->cpd.produced;
+		if (!cd->multi_proc)
+			break;
+		bytes_to_process -= codec->cpd.produced;
 	}
 
 	if (!processed) {

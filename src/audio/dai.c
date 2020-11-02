@@ -810,7 +810,10 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t samples;
 	int ret = 0;
 	uint32_t flags = 0;
-	
+	/*static int i;
+
+	if (i++ > 40)
+		return -1;*/
 	comp_dbg(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
@@ -842,12 +845,13 @@ static int dai_copy(struct comp_dev *dev)
 
 	buffer_unlock(buf, flags);
 
-	comp_dbg(dev, "dai_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
+	comp_info(dev, "dai_copy(), dir: %d copy_bytes= %d, period_bytes %d, sample_size %d",
 		 dev->direction, copy_bytes,
-		 samples / buf->stream.channels);
+		 dd->period_bytes,
+		 sample_size);
 
 	/* return if nothing to copy */
-	if (!copy_bytes) {
+	if (!copy_bytes || copy_bytes < dd->period_bytes) {
 		if (dd->chan->status == COMP_STATE_ACTIVE)
 			comp_warn(dev, "dai_copy(): nothing to copy, data distortion may occur.");
 		else
@@ -860,16 +864,17 @@ static int dai_copy(struct comp_dev *dev)
 	 * compressed ones require more input data then single pipeline
 	 * period.
 	 */
-	if (dd->chan->status != COMP_STATE_ACTIVE &&
-	    dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		if (src_samples * sample_size < buf->stream.size)
-			goto end;
+	if (dd->chan->status != COMP_STATE_ACTIVE) {
 		ret = dma_start(dd->chan);
 		if (ret < 0) {
 			comp_err(dev, "dai_config(): failed to start DMA");
 			dai_comp_trigger_internal(dev, COMP_TRIGGER_STOP);
 			return ret;
 		}
+		/* DMA has been started we will start copy data
+		 * in next period.
+		 */
+		goto end;
 	}
 
 	ret = dma_copy(dd->chan, copy_bytes, 0);

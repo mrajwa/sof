@@ -20,7 +20,7 @@
 static struct cadence_api cadence_api_table[] = {
 	{
 		.id = 0x01,
-		.api = cadence_api_function
+		.api = xa_dap_vlldp
 	},
 };
 
