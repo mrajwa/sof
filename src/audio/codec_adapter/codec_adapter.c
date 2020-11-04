@@ -246,7 +246,8 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 		cd->multi_proc = false;
 		cd->proc_start_th = cd->period_bytes;
 	}
-
+	comp_info(dev, "codec_adapter_prepare(): start threshold %d, processing_allowed %d",
+		cd->proc_start_th, cd->processing_allowed);
  	buffer_size = CA_LOCAL_BUFF_PERIOD_COUNT * cd->period_bytes;
  	if (cd->local_buff) {
 		ret = buffer_set_size(cd->local_buff, buffer_size);
@@ -268,6 +269,7 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	} 
 	buffer_reset_pos(cd->local_buff, NULL);
 	
+	//audio_stream_produce(&cd->local_buff->stream, 192);
  	cd->state = PP_STATE_PREPARED;
 
 	comp_info(dev, "codec_adapter_prepare() done");
@@ -364,26 +366,34 @@ static int codec_adapter_copy(struct comp_dev *dev)
 		return -1;*/
 	comp_get_copy_limits_with_lock(source, local_buff, &cl1);
 	
-	comp_info(dev, "codec_adapter_copy() start: codec_buff_size: %d, sink free: %d source avail %d",
-		 codec_buff_size, sink->stream.free, source->stream.avail);
 	/* fetch new samples to CA local buffer */
 	*(debug+1) = 0xFEED1;
 	*(debug+2) = cl1.source_bytes;
+	i = 0;
+	while (i > 1000000) {
+		*debug = (*debug << 2 | 4) & (11 < 5);
+	}
+	//comp_info(dev, "codec_adapter_copy() local buff avail %d", local_buff->stream.avail); 
 	audio_stream_copy(&source->stream, 0,
 			  &local_buff->stream, 0,
 			  cl1.source_bytes / cd->stream_params.sample_container_bytes);
-	audio_stream_produce(&local_buff->stream, cl1.source_bytes);
-	comp_update_buffer_consume(source, cl1.source_bytes);
+	//comp_info(dev, "codec_adapter_copy() local buff avail %d", local_buff->stream.avail); 
+	audio_stream_produce(&local_buff->stream, audio_stream_get_avail_bytes(&source->stream));
+	//comp_info(dev, "codec_adapter_copy() local buff avail %d", local_buff->stream.avail); 
+	comp_update_buffer_consume(source, audio_stream_get_avail_bytes(&source->stream));
+	//comp_info(dev, "codec_adapter_copy() local buff avail %d", local_buff->stream.avail); 
 	buffer_invalidate(source, cl1.source_bytes);
+	comp_info(dev, "codec_adapter_copy() start: codec_buff_size: %d, source avail: %d local buff avail %d processing_allowed %d",
+		 codec_buff_size, cl1.source_bytes, local_buff->stream.avail, cd->processing_allowed);
 
 	if (!cd->processing_allowed) {
-		if (audio_stream_get_avail_bytes(&local_buff->stream) < cd->proc_start_th) {
+		if (local_buff->stream.avail < cd->proc_start_th) {
 			comp_info(dev, "codec_adapter: processing not allowed, avail %d, start threshold %d",
-				  audio_stream_get_avail_bytes(&local_buff->stream), cd->proc_start_th);
+				  local_buff->stream.avail, cd->proc_start_th);
 			goto end;
 		}
 		cd->processing_allowed = true;
-	}
+	} 
 
 	comp_get_copy_limits_with_lock(local_buff, sink, &cl2);
 	bytes_to_process = cl2.source_bytes;
@@ -653,6 +663,9 @@ static int codec_adapter_reset(struct comp_dev *dev)
 	}
 
 	cd->state = PP_STATE_CREATED;
+	cd->processing_allowed = false;
+	cd->multi_proc = false;
+	buffer_reset_pos(cd->local_buff, NULL);
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): done");
 
@@ -671,6 +684,7 @@ static void codec_adapter_free(struct comp_dev *dev)
 		comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): error %d, codec reset has failed",
 			     ret);
 	}
+	buffer_free(cd->local_buff);
 	rfree(cd);
 	rfree(dev);
 

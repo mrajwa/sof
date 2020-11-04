@@ -392,12 +392,14 @@ static int host_copy_normal(struct comp_dev *dev)
 	uint32_t flags = 0;
 	int ret = 0;
 
-	comp_dbg(dev, "host_copy_normal()");
 
 	if (hd->copy_type == COMP_COPY_BLOCKING)
 		flags |= DMA_COPY_BLOCKING;
 
 	copy_bytes = host_get_copy_bytes_normal(dev);
+	
+	//comp_info(dev, "host_copy_normal() bytes %d", copy_bytes);
+	
 	if (!copy_bytes)
 		return ret;
 

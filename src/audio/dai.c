@@ -243,6 +243,8 @@ static void dai_free(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
+	comp_cl_dbg(&comp_dai, "dai_free()");
+
 	if (dd->group) {
 		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
 		dai_group_put(dd->group);
@@ -600,7 +602,7 @@ static int dai_reset(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 
-	comp_dbg(dev, "dai_reset()");
+	comp_info(dev, "dai_reset()");
 
 	dma_sg_free(&config->elem_array);
 
@@ -608,7 +610,6 @@ static int dai_reset(struct comp_dev *dev)
 		buffer_free(dd->dma_buffer);
 		dd->dma_buffer = NULL;
 	}
-
 	dd->dai_pos_blks = 0;
 	if (dd->dai_pos)
 		*dd->dai_pos = 0;
@@ -802,7 +803,7 @@ static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *buf = dd->local_buffer;
-	uint32_t stream_fmt = buf->stream.frame_fmt;
+	uint32_t stream_fmt = dd->dma_buffer->stream.frame_fmt;
 	uint32_t sample_size = get_sample_bytes(stream_fmt);
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
@@ -864,7 +865,7 @@ static int dai_copy(struct comp_dev *dev)
 		comp_warn(dev, "RAJWA():copy bytes differ from period bytes! copy_bytes %d",
 			copy_bytes); 
 	if (dd->chan->status != COMP_STATE_ACTIVE &&
-	   (src_samples * sample_size < 2*dd->period_bytes)) {
+	   (src_samples * sample_size < dd->period_bytes)) {
 		comp_warn(dev, "dai_copy(): Not enough data to start DMA.");
 		goto end;
 	}
