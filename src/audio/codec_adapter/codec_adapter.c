@@ -182,6 +182,7 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct codec_data *codec = &cd->codec;
 	uint32_t buff_periods;
+	uint32_t buffer_size;
 
 	comp_info(dev, "codec_adapter_prepare() start");
 
@@ -193,6 +194,9 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 
 	comp_info(dev, "RAJWA: codec_adapter_prepare(): source size %d, sink size %d",
 		cd->ca_source->stream.size, cd->ca_sink->stream.size);
+	comp_info(dev, "RAJWA: codec_adapter_prepare(): source start addr 0x%x, source end addr 0x%x sink start addr 0x%x sink end addr 0x%x",
+		(uint32_t )cd->ca_source->stream.addr, (uint32_t )cd->ca_source->stream.end_addr,
+		(uint32_t )cd->ca_sink->stream.addr, (uint32_t )cd->ca_sink->stream.end_addr);
 	if (!cd->ca_source) {
 		comp_err(dev, "codec_adapter_prepare(): source buffer not found");
 		return -EINVAL;
@@ -240,9 +244,30 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	} else {
 		cd->processing_allowed = true;
 		cd->multi_proc = false;
+		cd->proc_start_th = cd->period_bytes;
 	}
- 	
 
+ 	buffer_size = CA_LOCAL_BUFF_PERIOD_COUNT * cd->period_bytes;
+ 	if (cd->local_buff) {
+		ret = buffer_set_size(cd->local_buff, buffer_size);
+		if (ret < 0) {
+			comp_err(dev, "codec_adapter_prepare(): buffer_set_size() failed, buffer_size = %u",
+				 buffer_size);
+			return ret;
+		}
+	} else {
+		cd->local_buff = buffer_alloc(buffer_size, SOF_MEM_CAPS_RAM,
+					      PLATFORM_DCACHE_ALIGN);
+		if (!cd->local_buff) {
+			comp_err(dev, "codec_adapter_prepare(): failed to alloc local buffer");
+			return -ENOMEM;
+		}
+
+		buffer_set_params(cd->local_buff, &cd->stream_params,
+				  BUFFER_UPDATE_FORCE);
+	} 
+	buffer_reset_pos(cd->local_buff, NULL);
+	
  	cd->state = PP_STATE_PREPARED;
 
 	comp_info(dev, "codec_adapter_prepare() done");
@@ -261,6 +286,10 @@ static int codec_adapter_params(struct comp_dev *dev,
 		comp_err(dev, "codec_adapter_params(): comp_verify_params() failed.");
 		return ret;
 	}
+
+	ret = memcpy_s(&cd->stream_params, sizeof(struct sof_ipc_stream_params),
+		       params, sizeof(struct sof_ipc_stream_params));
+	assert(!ret);
 
 	cd->period_bytes = params->sample_container_bytes * 
 			   params->channels * params->rate / 1000; 
@@ -320,24 +349,45 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	struct codec_data *codec = &cd->codec;
 	struct comp_buffer *source = cd->ca_source;
 	struct comp_buffer *sink = cd->ca_sink;
+	struct comp_buffer *local_buff = cd->local_buff;
 	uint32_t codec_buff_size = codec->cpd.in_buff_size;
-	struct comp_copy_limits cl;
+	struct comp_copy_limits cl1;
+	struct comp_copy_limits cl2;
+	static int i;
+	//int *debug = (void *)SRAM_DEBUG_BASE;
+	int *debug = (void *)0x9e008000;
 
-	comp_get_copy_limits_with_lock(source, sink, &cl);
-	bytes_to_process = cl.source_bytes;
+	*debug = 0xFEED;
 
+	i++;
+	/*if (i++ > 40)
+		return -1;*/
+	comp_get_copy_limits_with_lock(source, local_buff, &cl1);
+	
 	comp_info(dev, "codec_adapter_copy() start: codec_buff_size: %d, sink free: %d source avail %d",
 		 codec_buff_size, sink->stream.free, source->stream.avail);
+	/* fetch new samples to CA local buffer */
+	*(debug+1) = 0xFEED1;
+	*(debug+2) = cl1.source_bytes;
+	audio_stream_copy(&source->stream, 0,
+			  &local_buff->stream, 0,
+			  cl1.source_bytes / cd->stream_params.sample_container_bytes);
+	audio_stream_produce(&local_buff->stream, cl1.source_bytes);
+	comp_update_buffer_consume(source, cl1.source_bytes);
+	buffer_invalidate(source, cl1.source_bytes);
 
 	if (!cd->processing_allowed) {
-		if (bytes_to_process < cd->proc_start_th) {
-			comp_info(dev, "codec_adapter: processing not allowed avail %d, start threshold %d",
-				  bytes_to_process, cd->proc_start_th);
+		if (audio_stream_get_avail_bytes(&local_buff->stream) < cd->proc_start_th) {
+			comp_info(dev, "codec_adapter: processing not allowed, avail %d, start threshold %d",
+				  audio_stream_get_avail_bytes(&local_buff->stream), cd->proc_start_th);
 			goto end;
 		}
 		cd->processing_allowed = true;
 	}
 
+	comp_get_copy_limits_with_lock(local_buff, sink, &cl2);
+	bytes_to_process = cl2.source_bytes;
+	*(debug+3) = bytes_to_process;
 	while (bytes_to_process) {
 		/* Proceed only if we have enough data to fill the lib buffer
 		 * completely. If you don't fill whole buffer
@@ -349,9 +399,8 @@ static int codec_adapter_copy(struct comp_dev *dev)
 			break;
 		}
 
-		codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
+		codec_adapter_copy_from_source_to_lib(&local_buff->stream, &codec->cpd,
 						      codec_buff_size);
-		buffer_invalidate(source, codec_buff_size);
 		codec->cpd.avail = codec_buff_size;
 		ret = codec_process(dev);
 		if (ret) {
@@ -364,10 +413,10 @@ static int codec_adapter_copy(struct comp_dev *dev)
 				 ret);
 			break;
 		}
+		
 		codec_adapter_copy_from_lib_to_sink(&codec->cpd, &sink->stream,
 						    codec->cpd.produced);
 		buffer_writeback(sink, codec->cpd.produced);
-
 		processed += codec->cpd.produced;
 		if (!cd->multi_proc)
 			break;
@@ -378,9 +427,9 @@ static int codec_adapter_copy(struct comp_dev *dev)
 		comp_dbg(dev, "codec_adapter_copy(): nothing processed in this call");
 		goto end;
 	}
-
+	*(debug+4) = processed;
 	comp_update_buffer_produce(sink, processed);
-	comp_update_buffer_consume(source, processed);
+	audio_stream_consume(&local_buff->stream, processed);
 end:
 	return ret;
 }

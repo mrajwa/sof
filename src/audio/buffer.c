@@ -79,6 +79,7 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		desc->size, desc->comp.pipeline_id, desc->comp.id, desc->flags);
 
 	/* allocate buffer */
+	//desc->size = MIN(desc->size, 1536);
 	buffer = buffer_alloc(desc->size, desc->caps, PLATFORM_DCACHE_ALIGN);
 	if (buffer) {
 		buffer->id = desc->comp.id;

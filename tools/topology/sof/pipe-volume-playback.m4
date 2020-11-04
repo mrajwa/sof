@@ -12,6 +12,8 @@ include(`pga.m4')
 include(`dai.m4')
 include(`mixercontrol.m4')
 include(`pipeline.m4')
+undefine(`DAI_PERIODS')
+define(`DAI_PERIODS', 8)
 
 #
 # Controls
@@ -44,14 +46,14 @@ W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
 # Host "Passthrough Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0, SCHEDULE_CORE)
+W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, DAI_PERIODS, 0, SCHEDULE_CORE)
 
 # "Volume" has 2 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, SCHEDULE_CORE,
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, DAI_PERIODS, DEF_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Playback Buffers
-W_BUFFER(0, COMP_BUFFER_SIZE(2,
+W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_HOST_MEM_CAP, SCHEDULE_CORE)
 W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,

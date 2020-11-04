@@ -125,7 +125,7 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	 */
 	while (size > 0) {
 		param = data;
-		comp_dbg(dev, "apply_config() applying param %d value %d",
+		comp_info(dev, "apply_config() applying param %d value %d",
 			 param->id, param->data[0]);
 		/* Set read parameter */
 		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, param->id,

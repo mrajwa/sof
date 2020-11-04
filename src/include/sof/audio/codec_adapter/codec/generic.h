@@ -17,6 +17,7 @@
 #define comp_get_codec(d) (&(((struct comp_data *)((d)->priv_data))->codec))
 #define CODEC_GET_INTERFACE_ID(id) ((id) >> 0x8)
 #define CODEC_GET_API_ID(id) ((id) & 0xFF)
+#define CA_LOCAL_BUFF_PERIOD_COUNT 8
 #define API_CALL(cd, cmd, sub_cmd, value, ret) \
 	do { \
 		ret = (cd)->api((cd)->self, \
@@ -182,6 +183,8 @@ struct comp_data {
 	struct codec_data codec; /**< codec private data */
 	struct comp_buffer *ca_sink;
 	struct comp_buffer *ca_source;
+	struct comp_buffer *local_buff;
+	struct sof_ipc_stream_params stream_params;
 	void *runtime_params;
 	uint32_t period_bytes;
 	uint32_t proc_start_th; /**< processing start threshold */

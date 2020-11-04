@@ -1154,7 +1154,7 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 	IPC_COPY_CMD(ipc_buffer, ipc->comp_data);
 
 	/* check core */
-	if (!cpu_is_me(ipc_buffer.comp.core))
+	if (!cpu_is_me(ipc_buffer.comp.core) && 0)
 		return ipc_process_on_core(ipc_buffer.comp.core);
 
 	tr_dbg(&ipc_tr, "ipc: pipe %d buffer %d -> new (0x%x bytes)",

@@ -229,6 +229,8 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	dd->chan = NULL;
 
 	dev->state = COMP_STATE_READY;
+	comp_cl_err(&comp_dai, "RAJWA(): debug memory address DSP %x", 
+		(uint32_t)SRAM_DEBUG_BASE);
 	return dev;
 
 error:
@@ -514,7 +516,7 @@ static int dai_params(struct comp_dev *dev,
 
 	dd->period_bytes = period_bytes;
 	comp_info(dev, "RAJWA: format %d period bytes %d buffer_size %d", 
-		dconfig->frame_fmt, dd->period_bytes, buffer_size);
+		params->frame_fmt, dd->period_bytes, buffer_size);
 	
 	/* alloc DMA buffer or change its size if exists */
 	if (dd->dma_buffer) {
@@ -800,8 +802,8 @@ static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *buf = dd->local_buffer;
-	uint32_t dma_fmt = buf->stream.frame_fmt;
-	uint32_t sample_size = get_sample_bytes(dma_fmt);
+	uint32_t stream_fmt = buf->stream.frame_fmt;
+	uint32_t sample_size = get_sample_bytes(stream_fmt);
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -820,11 +822,10 @@ static int dai_copy(struct comp_dev *dev)
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
 	if (ret < 0) {
 		dai_report_xrun(dev, 0);
-		return ret;
+		goto end;
 	}
 
 	buffer_lock(buf, &flags);
-
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		src_samples = audio_stream_get_avail_samples(&buf->stream);
@@ -836,6 +837,8 @@ static int dai_copy(struct comp_dev *dev)
 		samples = MIN(src_samples, sink_samples);
 
 	}
+	buffer_unlock(buf, flags);
+	
 	/* limit bytes per copy to one period for the whole pipeline
 	 * in order to avoid high load spike which may led to delays
 	 * in data delivery and finally to data distortion.
@@ -843,22 +846,29 @@ static int dai_copy(struct comp_dev *dev)
 	samples = MIN(samples, dd->period_bytes / sample_size);
 	copy_bytes = samples * sample_size;
 
-	buffer_unlock(buf, flags);
-
 	comp_info(dev, "dai_copy(), dir: %d copy_bytes= %d, period_bytes %d, sample_size %d",
 		 dev->direction, copy_bytes,
 		 dd->period_bytes,
 		 sample_size);
 
 	/* return if nothing to copy */
-	if (!copy_bytes || copy_bytes < dd->period_bytes) {
+	if (!copy_bytes) {
 		if (dd->chan->status == COMP_STATE_ACTIVE)
 			comp_warn(dev, "dai_copy(): nothing to copy, data distortion may occur.");
 		else
 			comp_warn(dev, "dai_copy(): nothing to copy for stream: %d, direction %d.",
 				dd->stream_id, dev->direction);
-		return 0;
+		goto end;
 	}
+	if (copy_bytes != dd->period_bytes)
+		comp_warn(dev, "RAJWA():copy bytes differ from period bytes! copy_bytes %d",
+			copy_bytes); 
+	if (dd->chan->status != COMP_STATE_ACTIVE &&
+	   (src_samples * sample_size < 2*dd->period_bytes)) {
+		comp_warn(dev, "dai_copy(): Not enough data to start DMA.");
+		goto end;
+	}
+
 	/* start DMA copy for playback streams only when we have gathered
 	 * full dma buffer of data. This is because some streams like
 	 * compressed ones require more input data then single pipeline
