@@ -331,7 +331,7 @@ static int dw_dma_start(struct dma_chan_data *channel)
 	/* enable the channel */
 	channel->status = COMP_STATE_ACTIVE;
 	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
-	dw_dma_increment_pointer(dw_chan, dw_chan->ptr_data.buffer_bytes);
+	//dw_dma_increment_pointer(dw_chan, dw_chan->ptr_data.buffer_bytes/2);
 out:
 	irq_local_enable(flags);
 

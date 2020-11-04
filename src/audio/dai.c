@@ -660,7 +660,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 			 * Playback streams are started once enough data
 			 * are collected.
 			 */
-			if (dev->direction == SOF_IPC_STREAM_CAPTURE) {
+			if (dev->direction == SOF_IPC_STREAM_CAPTURE && 1) {
 				ret = dma_start(dd->chan);
 				if (ret < 0)
 					return ret;
@@ -875,19 +875,17 @@ static int dai_copy(struct comp_dev *dev)
 	 * compressed ones require more input data then single pipeline
 	 * period.
 	 */
-	if (dd->chan->status != COMP_STATE_ACTIVE) {
+	/*if (dd->chan->status != COMP_STATE_ACTIVE) {
 		ret = dma_start(dd->chan);
 		if (ret < 0) {
 			comp_err(dev, "dai_config(): failed to start DMA");
 			dai_comp_trigger_internal(dev, COMP_TRIGGER_STOP);
 			return ret;
 		}
-		/* DMA has been started we will start copy data
-		 * in next period.
-		 */
+		
 		goto end;
 	}
-
+*/
 	ret = dma_copy(dd->chan, copy_bytes, 0);
 	if (ret < 0) {
 		dai_report_xrun(dev, copy_bytes);
