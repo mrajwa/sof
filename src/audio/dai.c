@@ -229,8 +229,6 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	dd->chan = NULL;
 
 	dev->state = COMP_STATE_READY;
-	comp_cl_err(&comp_dai, "RAJWA(): debug memory address DSP %x", 
-		(uint32_t)SRAM_DEBUG_BASE);
 	return dev;
 
 error:
@@ -242,8 +240,6 @@ error:
 static void dai_free(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-
-	comp_cl_dbg(&comp_dai, "dai_free()");
 
 	if (dd->group) {
 		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
@@ -505,6 +501,7 @@ static int dai_params(struct comp_dev *dev,
 	/* calculate frame size */
 	frame_size = get_frame_bytes(dconfig->frame_fmt,
 				     dd->local_buffer->stream.channels);
+
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
 	if (!period_bytes) {
@@ -512,14 +509,11 @@ static int dai_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
+	dd->period_bytes = period_bytes;
 
 	/* calculate DMA buffer size */
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
 
-	dd->period_bytes = period_bytes;
-	comp_info(dev, "RAJWA: format %d period bytes %d buffer_size %d", 
-		params->frame_fmt, dd->period_bytes, buffer_size);
-	
 	/* alloc DMA buffer or change its size if exists */
 	if (dd->dma_buffer) {
 		err = buffer_set_size(dd->dma_buffer, buffer_size);
@@ -602,7 +596,7 @@ static int dai_reset(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 
-	comp_info(dev, "dai_reset()");
+	comp_dbg(dev, "dai_reset()");
 
 	dma_sg_free(&config->elem_array);
 
@@ -610,6 +604,7 @@ static int dai_reset(struct comp_dev *dev)
 		buffer_free(dd->dma_buffer);
 		dd->dma_buffer = NULL;
 	}
+
 	dd->dai_pos_blks = 0;
 	if (dd->dai_pos)
 		*dd->dai_pos = 0;
@@ -656,15 +651,9 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		if (dd->xrun == 0) {
 			/* start the DAI */
 			dai_trigger(dd->dai, cmd, dev->direction);
-			/* trigger DMA for capture streams right away.
-			 * Playback streams are started once enough data
-			 * are collected.
-			 */
-			if (dev->direction == SOF_IPC_STREAM_CAPTURE && 1) {
-				ret = dma_start(dd->chan);
-				if (ret < 0)
-					return ret;
-			}
+			ret = dma_start(dd->chan);
+			if (ret < 0)
+				return ret;
 		} else {
 			dd->xrun = 0;
 		}
@@ -802,9 +791,8 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	uint32_t dma_fmt = dd->dma_buffer->stream.frame_fmt;
 	struct comp_buffer *buf = dd->local_buffer;
-	uint32_t stream_fmt = dd->dma_buffer->stream.frame_fmt;
-	uint32_t sample_size = get_sample_bytes(stream_fmt);
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -813,85 +801,64 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t samples;
 	int ret = 0;
 	uint32_t flags = 0;
-	/*static int i;
 
-	if (i++ > 40)
-		return -1;*/
 	comp_dbg(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
 	if (ret < 0) {
 		dai_report_xrun(dev, 0);
-		goto end;
+		return ret;
 	}
 
 	buffer_lock(buf, &flags);
+
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		src_samples = audio_stream_get_avail_samples(&buf->stream);
-		sink_samples = free_bytes / sample_size;
+		sink_samples = free_bytes / get_sample_bytes(dma_fmt);
 		samples = MIN(src_samples, sink_samples);
 	} else {
-		src_samples = avail_bytes / sample_size;
+		src_samples = avail_bytes / get_sample_bytes(dma_fmt);
 		sink_samples = audio_stream_get_free_samples(&buf->stream);
 		samples = MIN(src_samples, sink_samples);
 
+		/* limit bytes per copy to one period for the whole pipeline
+		 * in order to avoid high load spike
+		 */
+		samples = MIN(samples, dd->period_bytes /
+			      get_sample_bytes(dma_fmt));
 	}
-	buffer_unlock(buf, flags);
-	
-	/* limit bytes per copy to one period for the whole pipeline
-	 * in order to avoid high load spike which may led to delays
-	 * in data delivery and finally to data distortion.
-	 */
-	samples = MIN(samples, dd->period_bytes / sample_size);
-	copy_bytes = samples * sample_size;
+	copy_bytes = samples * get_sample_bytes(dma_fmt);
 
-	comp_info(dev, "dai_copy(), dir: %d copy_bytes= %d, period_bytes %d, sample_size %d",
+	buffer_unlock(buf, flags);
+
+	comp_dbg(dev, "dai_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
 		 dev->direction, copy_bytes,
-		 dd->period_bytes,
-		 sample_size);
+		 samples / buf->stream.channels);
+
+	/* Check possibility of glitch occurrence */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
+	    copy_bytes + avail_bytes < dd->period_bytes)
+		comp_warn(dev, "dai_copy(): Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
+			  copy_bytes, avail_bytes, dd->period_bytes);
+	else if (dev->direction == SOF_IPC_STREAM_CAPTURE &&
+		 copy_bytes + free_bytes < dd->period_bytes)
+		comp_warn(dev, "dai_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
+			  copy_bytes, free_bytes, dd->period_bytes);
 
 	/* return if nothing to copy */
 	if (!copy_bytes) {
-		if (dd->chan->status == COMP_STATE_ACTIVE)
-			comp_warn(dev, "dai_copy(): nothing to copy, data distortion may occur.");
-		else
-			comp_warn(dev, "dai_copy(): nothing to copy for stream: %d, direction %d.",
-				dd->stream_id, dev->direction);
-		goto end;
-	}
-	if (copy_bytes != dd->period_bytes)
-		comp_warn(dev, "RAJWA():copy bytes differ from period bytes! copy_bytes %d",
-			copy_bytes); 
-	if (dd->chan->status != COMP_STATE_ACTIVE &&
-	   (src_samples * sample_size < dd->period_bytes)) {
-		comp_warn(dev, "dai_copy(): Not enough data to start DMA.");
-		goto end;
+		comp_warn(dev, "dai_copy(): nothing to copy");
+		return 0;
 	}
 
-	/* start DMA copy for playback streams only when we have gathered
-	 * full dma buffer of data. This is because some streams like
-	 * compressed ones require more input data then single pipeline
-	 * period.
-	 */
-	/*if (dd->chan->status != COMP_STATE_ACTIVE) {
-		ret = dma_start(dd->chan);
-		if (ret < 0) {
-			comp_err(dev, "dai_config(): failed to start DMA");
-			dai_comp_trigger_internal(dev, COMP_TRIGGER_STOP);
-			return ret;
-		}
-		
-		goto end;
-	}
-*/
 	ret = dma_copy(dd->chan, copy_bytes, 0);
 	if (ret < 0) {
 		dai_report_xrun(dev, copy_bytes);
 		return ret;
 	}
-end:
+
 	return ret;
 }
 
