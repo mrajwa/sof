@@ -114,7 +114,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	void *buffer_ptr;
 	int ret;
 
-	comp_dbg(dev, "dai_dma_cb()");
+	comp_info(dev, "dai_dma_cb()");
 
 	next->status = DMA_CB_STATUS_RELOAD;
 
@@ -551,7 +551,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	comp_dbg(dev, "dai_prepare()");
+	comp_info(dev, "dai_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -650,15 +650,17 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* start the DAI */
-			dai_trigger(dd->dai, cmd, dev->direction);
-			ret = dma_start(dd->chan);
-			if (ret < 0)
-				return ret;
+			if (dev->direction == SOF_IPC_STREAM_CAPTURE) {
+				dai_trigger(dd->dai, cmd, dev->direction);
+				ret = dma_start(dd->chan);
+				if (ret < 0)
+					return ret;
+				dai_update_start_position(dev);
+			}
 		} else {
 			dd->xrun = 0;
 		}
 
-		dai_update_start_position(dev);
 		break;
 	case COMP_TRIGGER_RELEASE:
 		/* before release, we clear the buffer data to 0s,
@@ -793,6 +795,7 @@ static int dai_copy(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t dma_fmt = dd->dma_buffer->stream.frame_fmt;
 	struct comp_buffer *buf = dd->local_buffer;
+	uint8_t sample_size = get_sample_bytes(dma_fmt);
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -822,13 +825,14 @@ static int dai_copy(struct comp_dev *dev)
 		src_samples = avail_bytes / get_sample_bytes(dma_fmt);
 		sink_samples = audio_stream_get_free_samples(&buf->stream);
 		samples = MIN(src_samples, sink_samples);
-
-		/* limit bytes per copy to one period for the whole pipeline
-		 * in order to avoid high load spike
-		 */
-		samples = MIN(samples, dd->period_bytes /
-			      get_sample_bytes(dma_fmt));
 	}
+
+       /* limit bytes per copy to one period for the whole pipeline
+        * in order to avoid high load spike which may led to delays
+        * in data delivery and finally to data distortion.
+        */
+	samples = MIN(samples, dd->period_bytes /
+		      get_sample_bytes(dma_fmt));
 	copy_bytes = samples * get_sample_bytes(dma_fmt);
 
 	buffer_unlock(buf, flags);
@@ -847,18 +851,37 @@ static int dai_copy(struct comp_dev *dev)
 		comp_warn(dev, "dai_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, free_bytes, dd->period_bytes);
 
+
 	/* return if nothing to copy */
 	if (!copy_bytes) {
 		comp_warn(dev, "dai_copy(): nothing to copy");
 		return 0;
 	}
+	if (dd->chan->status != COMP_STATE_ACTIVE) {
+               if (src_samples * sample_size < 2*dd->period_bytes) {
+               		comp_warn(dev, "dai_copy(): Not enough data to start DMA %d available",
+               			src_samples * sample_size);
+                       goto end;
+               }
+               comp_info(dev, "RAJWA: starting DAI");
+               dai_trigger(dd->dai, COMP_TRIGGER_START, dev->direction);
+               comp_info(dev, "RAJWA: starting DMA");
+               ret = dma_start(dd->chan);
+               if (ret < 0) {
+                       comp_err(dev, "dai_config(): failed to start DMA");
+                       dai_comp_trigger_internal(dev, COMP_TRIGGER_STOP);
+                       return ret;
+               }
+               dai_update_start_position(dev);
+       }
+
 
 	ret = dma_copy(dd->chan, copy_bytes, 0);
 	if (ret < 0) {
 		dai_report_xrun(dev, copy_bytes);
 		return ret;
 	}
-
+end:
 	return ret;
 }
 

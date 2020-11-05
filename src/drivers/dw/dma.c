@@ -268,7 +268,7 @@ static int dw_dma_start(struct dma_chan_data *channel)
 	uint32_t words_per_tfr = 0;
 #endif
 
-	tr_dbg(&dwdma_tr, "dw_dma_start(): dma %d channel %d start",
+	tr_info(&dwdma_tr, "dw_dma_start(): dma %d channel %d start",
 	       channel->dma->plat_data.id, channel->index);
 
 	irq_local_disable(flags);
@@ -510,7 +510,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 	int ret = 0;
 	int i;
 
-	tr_dbg(&dwdma_tr, "dw_dma_set_config(): dma %d channel %d config",
+	tr_info(&dwdma_tr, "dw_dma_set_config(): dma %d channel %d config",
 	       channel->dma->plat_data.id, channel->index);
 
 	irq_local_disable(flags);

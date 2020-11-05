@@ -181,9 +181,9 @@ static int spi_trigger(struct spi *spi, int cmd, int direction)
 	switch (cmd) {
 	case SPI_TRIGGER_START:
 		/* trigger the SPI-Slave + DMA + INT + Receiving */
-		ret = dma_start(spi->chan[direction]);
+		/*ret = dma_start(spi->chan[direction]);
 		if (ret < 0)
-			return ret;
+			return ret;*/
 
 		/*
 		 * DMA seems to need some time before it can service a data
