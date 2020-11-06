@@ -775,8 +775,11 @@ static void ssp_pause(struct dai *dai, int direction)
 static int ssp_trigger(struct dai *dai, int cmd, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	uint32_t caller;
 
-	dai_info(dai, "ssp_trigger() cmd %d", cmd);
+	__asm__ __volatile__ ("s32i a0, %0, 0" : "=a" (caller) : : "memory");
+
+	dai_info(dai, "ssp_trigger() cmd %d, caller %x", cmd, caller);
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
