@@ -128,6 +128,7 @@ struct draining_data {
 	size_t drain_interval;
 	size_t pb_limit; /**< Period bytes limit */
 	struct comp_dev *dev;
+	uint32_t core_id;
 	bool sync_mode_on;
 };
 

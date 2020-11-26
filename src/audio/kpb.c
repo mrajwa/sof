@@ -1129,6 +1129,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.pb_limit = period_bytes_limit;
 		kpb->draining_task_data.dev = dev;
 		kpb->draining_task_data.sync_mode_on = kpb->sync_draining_mode;
+		kpb->draining_task_data.core_id = dev->comp.core;
 
 		/* Set host-sink copy mode to blocking */
 		comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
@@ -1177,10 +1178,13 @@ static enum task_state kpb_draining_task(void *arg)
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = &draining_data->sync_mode_on;
 	uint32_t flags;
+	bool pm_active = pm_runtime_is_active(PM_RUNTIME_DSP,
+					      draining_data->core_id);
 
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
 
-	pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+	if (!pm_active)
+		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 	/* Change KPB internal state to DRAINING */
 	kpb_change_state(kpb, KPB_STATE_DRAINING);
@@ -1293,8 +1297,8 @@ out:
 	else
 		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in > %u ms",
 			     drained, UINT_MAX);
-
-	pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+	if (!pm_active)
+		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 	return SOF_TASK_STATE_COMPLETED;
 }
