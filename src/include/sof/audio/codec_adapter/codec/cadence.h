@@ -20,7 +20,7 @@
 /*****************************************************************************/
 /* Cadence API functions							     */
 /*****************************************************************************/
-extern xa_codec_func_t cadence_api_function;
+extern xa_codec_func_t xa_dap_vlldp;
 extern xa_codec_func_t xa_aac_dec;
 extern xa_codec_func_t xa_bsac_dec;
 extern xa_codec_func_t xa_dabplus_dec;

@@ -21,7 +21,7 @@ static struct cadence_api cadence_api_table[] = {
 #ifdef CONFIG_CADENCE_CODEC_WRAPPER
 	{
 		.id = 0x01,
-		.api = cadence_api_function
+		.api = xa_dap_vlldp,
 	},
 #endif
 #ifdef CONFIG_CADENCE_CODEC_AAC_DEC
