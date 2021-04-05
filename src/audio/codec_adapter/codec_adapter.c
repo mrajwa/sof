@@ -363,6 +363,8 @@ static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
 
 static int codec_adapter_copy(struct comp_dev *dev)
 {
+	int prid;
+	__asm__("rsr.prid %0" : "=a"(prid));
 	int ret = 0;
 	uint32_t bytes_to_process, copy_bytes, processed = 0;
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -376,8 +378,8 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	comp_get_copy_limits_with_lock(source, local_buff, &cl);
 	bytes_to_process = cl.frames * cl.source_frame_bytes;
 
-	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d source avail %d",
-		 codec_buff_size, local_buff->stream.free, source->stream.avail);
+	comp_info(dev, "codec_adapter_copy() start code %d: codec_buff_size: %d, local_buff free: %d source avail %d",
+		 prid, codec_buff_size, local_buff->stream.free, source->stream.avail);
 
 	while (bytes_to_process) {
 		/* Proceed only if we have enough data to fill the lib buffer

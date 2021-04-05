@@ -391,8 +391,10 @@ static int host_copy_normal(struct comp_dev *dev)
 	uint32_t copy_bytes = 0;
 	uint32_t flags = 0;
 	int ret = 0;
+	int prid;
+	__asm__("rsr.prid %0" : "=a"(prid));
 
-	comp_dbg(dev, "host_copy_normal()");
+	comp_dbg(dev, "host_copy_normal() on core %d", prid);
 
 	if (hd->copy_type == COMP_COPY_BLOCKING)
 		flags |= DMA_COPY_BLOCKING;
