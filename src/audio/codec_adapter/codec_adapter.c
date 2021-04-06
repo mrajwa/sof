@@ -261,9 +261,9 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 			return -ENOMEM;
 		}
 
-		buffer_set_params(cd->local_buff, &cd->stream_params,
-				  BUFFER_UPDATE_FORCE);
 	}
+	buffer_set_params(cd->local_buff, &cd->stream_params,
+			  BUFFER_UPDATE_FORCE);
 	buffer_reset_pos(cd->local_buff, NULL);
 
 	cd->state = PP_STATE_PREPARED;
@@ -279,6 +279,8 @@ static int codec_adapter_params(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	ret = comp_verify_params(dev, 0, params);
+	comp_info(dev, "codec_adapter_params(): start -> frame fmt %d, channels %d sample bytes %d", 
+		params->frame_fmt, params->channels, params->sample_valid_bytes);
 	if (ret < 0) {
 		comp_err(dev, "codec_adapter_params(): comp_verify_params() failed.");
 		return ret;
