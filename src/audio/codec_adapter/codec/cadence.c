@@ -142,6 +142,7 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	struct codec_param *param;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
+	struct sof_ipc_stream_params *stream = &((struct comp_data *)comp_get_drvdata(dev))->stream_params;
 
 	comp_dbg(dev, "apply_config() start");
 
@@ -165,7 +166,23 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 		param = data;
 		comp_dbg(dev, "apply_config() applying param %d value %d",
 			 param->id, param->data[0]);
-		/* Set read parameter */
+		/* Update stream parameters */
+		switch (param->id) {
+		case CADENCE_PARAM_SAMPLE_RATE:
+			param->data[0] = stream->rate;
+			break;
+		case CADENCE_PARAM_PCM_WDSZ:
+			param->data[0] = (stream->frame_fmt == SOF_IPC_FRAME_S16_LE) ?
+				       0x10 : 0x20; /* 16 or 32 bit samples */
+			break;
+		case CADENCE_PARAM_NUM_CHANNELS:
+			param->data[0] = stream->channels;
+			break;
+		default:
+			break;
+
+		}
+		/* Set parameter */
 		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, param->id,
 			 param->data, ret);
 		if (ret != LIB_NO_ERROR) {

@@ -17,6 +17,16 @@
 #define LIB_NO_ERROR XA_NO_ERROR
 #define LIB_IS_FATAL_ERROR(e) ((e) & XA_FATAL_ERROR)
 
+enum cadence_stream_param {
+	CADENCE_PARAM_BLOCK_SIZE	= 0,
+	CADENCE_PARAM_SAMPLE_RATE	= 1,
+	CADENCE_PARAM_PCM_WDSZ		= 2,
+	CADENCE_PARAM_INTERLEAVED_MODE	= 3,
+	CADENCE_PARAM_NUM_CHANNELS	= 4,
+	CADENCE_PARAM_MAX_NUM_CHANNELS	= 5,
+	CADENCE_PARAM_FILTER_CONFIG	= 6
+};
+
 /*****************************************************************************/
 /* Cadence API functions							     */
 /*****************************************************************************/
