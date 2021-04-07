@@ -82,7 +82,7 @@ int codec_init(struct comp_dev *dev)
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t codec_id = cd->ca_config.codec_id;
-	uint32_t interface_id = CODEC_GET_INTERFACE_ID(codec_id);
+	//uint32_t interface_id = CODEC_GET_INTERFACE_ID(codec_id);
 	struct codec_data *codec = &cd->codec;
 	struct codec_interface *interface = NULL;
 	uint32_t i;
@@ -99,7 +99,7 @@ int codec_init(struct comp_dev *dev)
 
 	/* Find proper interface */
 	for (i = 0; i < no_of_interfaces; i++) {
-		if (interfaces[i].id == interface_id) {
+		if (interfaces[i].id == codec_id) {
 			interface = &interfaces[i];
 			break;
 		}
