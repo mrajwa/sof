@@ -573,6 +573,36 @@ static int waves_effect_config(struct comp_dev *dev, enum codec_cfg_type type)
 	return ret;
 }
 
+/* update stream params */
+static int waves_effect_update_stream_params(struct comp_dev *dev)
+{
+	struct comp_data *ca_data = comp_get_drvdata(dev);
+	struct comp_data *ca_data = comp_get_drvdata(dev);
+	struct codec_data *codec = comp_get_codec(dev);
+	struct waves_codec_data *waves_codec = codec->private;
+	struct ca_config *ca_config = &ca_data->ca_config;
+	struct sof_ipc_stream_params *stream = &ca_data->stream_params;
+	MaxxStatus_t status;
+	MaxxStreamFormat_t *i_formats[NUM_IO_STREAMS] = { &waves_codec->i_format };
+	MaxxStreamFormat_t *o_formats[NUM_IO_STREAMS] = { &waves_codec->o_format };
+
+	comp_dbg(dev, "update_stream_params() start.");
+
+	waves_codec->i_format.sampleRate = stream->rate;
+	waves_codec->i_format.numChannels = stream->channels;
+	waves_codec->i_format.samplesFormat = format_convert_sof_to_me(stream->frame_fmt);
+
+	/* update stream parameters */
+	status = MaxxEffect_Initialize(waves_codec->effect, i_formats, 1, o_formats, 1);
+
+	if (status) {
+		comp_err(dev, "update_stream_params() update failed (returned %d)", status);
+		return -EINVAL;
+	}
+
+	comp_dbg(dev, "waves_effect_init() done");
+	return 0;
+}
 /* apply setup config */
 static int waves_effect_setup_config(struct comp_dev *dev)
 {
@@ -645,6 +675,9 @@ int waves_codec_prepare(struct comp_dev *dev)
 
 	if (!ret)
 		ret = waves_effect_setup_config(dev);
+
+	if (!ret)
+		ret = waves_effect_update_stream_params(dev);
 
 	if (ret)
 		comp_err(dev, "waves_codec_prepare() failed %d", ret);
